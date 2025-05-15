@@ -42,40 +42,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         // Obter o ID do administrador inserido
                         $adm_id = $conn->insert_id;
                         
-                        // Conectar ao banco de dados do app
-                        $app_db_host = 'localhost';
-                        $app_db_username = 'root';
-                        $app_db_password = '';
-                        $app_db_name = 'app_empresas';
-                        
-                        $app_conn = new mysqli($app_db_host, $app_db_username, $app_db_password, $app_db_name);
-                        
-                        if ($app_conn->connect_error) {
-                            error_log("Falha ao conectar com o banco de dados do app: " . $app_conn->connect_error);
-                        } else {
-                            // Verifique se o email já existe no banco de dados do app
-                            $app_check_sql = "SELECT id FROM empresas WHERE email = ?";
-                            $app_check_stmt = $app_conn->prepare($app_check_sql);
-                            $app_check_stmt->bind_param("s", $email);
-                            $app_check_stmt->execute();
-                            $app_check_stmt->store_result();
-                            
-                            if ($app_check_stmt->num_rows == 0) {
-                                // Criar conta na tabela empresas do app_empresas
-                                $app_sql = "INSERT INTO empresas (nome, email, senha) VALUES (?, ?, ?)";
-                                $app_stmt = $app_conn->prepare($app_sql);
-                                
-                                if ($app_stmt) {
-                                    $app_stmt->bind_param("sss", $nome, $email, $senha_hash);
-                                    $app_stmt->execute();
-                                    $app_stmt->close();
-                                } else {
-                                    error_log("Falha ao preparar a consulta para o app: " . $app_conn->error);
-                                }
-                            }
-                            $app_check_stmt->close();
-                            $app_conn->close();
-                        }
+                        // Removi o código que criava uma duplicata no app_empresas
+                        // O cadastro da empresa no app será feito apenas pelo trigger quando a empresa for cadastrada
                         
                         $sweetalert = "Swal.fire({ title: 'Cadastro realizado!', text: 'VocÃª serÃ¡ redirecionado para a pÃ¡gina de login.', icon: 'success' }).then(() => { window.location.href = 'login.php'; });";
                     } else {

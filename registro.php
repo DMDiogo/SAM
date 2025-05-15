@@ -6,6 +6,7 @@ if (session_status() == PHP_SESSION_NONE) {
 
 include('protect.php');
 include('config.php'); // Conexão com o banco
+include_once('includes/sync_app.php'); // Incluir arquivo de sincronização
 
 if (!isset($conn)) {
     die("Erro: Conexão com o banco de dados não estabelecida.");
@@ -112,6 +113,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Obter o ID do funcionário recém-cadastrado
         $funcionario_id = $stmt->insert_id;
         $stmt->close();
+
+        // Sincronizar com o aplicativo
+        sincronizarFuncionarioSiteParaApp($funcionario_id, $empresa_id);
 
         // Commit da transação se tudo ocorrer bem
         $conn->commit();

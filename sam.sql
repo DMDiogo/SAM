@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Tempo de geração: 03-Maio-2025 às 16:51
+-- Tempo de geração: 10-Maio-2025 às 21:44
 -- Versão do servidor: 10.4.32-MariaDB
 -- versão do PHP: 8.0.30
 
@@ -40,7 +40,36 @@ CREATE TABLE `adm` (
 --
 
 INSERT INTO `adm` (`id_adm`, `nome`, `email`, `senha`, `telefone`) VALUES
-(2, 'Diogo Oliveira', 'maguinhomast2005@gmail.com', '$2y$10$Tj8bn.VURqaA404emnRkkOl/s9GwYpfUcRO6bktWKrf9GVnvf8GDa', 2147483647);
+(3, 'Diogo Oliveira', 'diogodm1225@gmail.com', '$2y$10$fPubpk27CMUX5Fgb1mLrg.Nx3SostAJfWqbbSJy2FjXmcapDQ2aZi', 2147483647);
+
+--
+-- Acionadores `adm`
+--
+DELIMITER $$
+CREATE TRIGGER `delete_adm_app` AFTER DELETE ON `adm` FOR EACH ROW BEGIN
+    DELETE FROM `app_empresas`.`empresas` WHERE `email` = OLD.email;
+    -- A exclusão em cascata vai automaticamente remover os funcionários relacionados
+END
+$$
+DELIMITER ;
+DELIMITER $$
+CREATE TRIGGER `update_adm_app` AFTER UPDATE ON `adm` FOR EACH ROW BEGIN
+    -- Se o email foi alterado, precisamos encontrar o registro pelo email antigo
+    IF OLD.email != NEW.email THEN
+        -- Atualizar a empresa correspondente no app_empresas
+        UPDATE `app_empresas`.`empresas` 
+        SET `nome` = NEW.nome, 
+            `email` = NEW.email
+        WHERE `email` = OLD.email;
+    ELSE
+        -- Se o email não mudou, apenas atualizar outros dados
+        UPDATE `app_empresas`.`empresas` 
+        SET `nome` = NEW.nome
+        WHERE `email` = NEW.email;
+    END IF;
+END
+$$
+DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -55,13 +84,6 @@ CREATE TABLE `adm_sessions` (
   `ip_address` varchar(45) DEFAULT NULL,
   `last_activity` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Extraindo dados da tabela `adm_sessions`
---
-
-INSERT INTO `adm_sessions` (`session_id`, `adm_id`, `user_agent`, `ip_address`, `last_activity`) VALUES
-('q6loca3uqtv1bqfscb58j1m02r', 2, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36', '::1', '2025-05-03 13:33:26');
 
 -- --------------------------------------------------------
 
@@ -132,19 +154,24 @@ CREATE TABLE `empresa` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 --
--- Extraindo dados da tabela `empresa`
---
-
-INSERT INTO `empresa` (`id_empresa`, `nome`, `nipc`, `endereco`, `email_corp`, `telefone`, `setor_atuacao`, `num_fun`, `data_cadastro`, `adm_id`) VALUES
-(2, 'Diogo Oliveira', '43653467', 'Mutamba', 'SAM@gmail.com', '922608606', 'saude', 1, '2025-05-03', 2);
-
---
 -- Acionadores `empresa`
 --
 DELIMITER $$
 CREATE TRIGGER `delete_empresa_app` AFTER DELETE ON `empresa` FOR EACH ROW BEGIN    
     -- Excluir a empresa correspondente no app_empresas
     DELETE FROM `app_empresas`.`empresas` WHERE `site_empresa_id` = OLD.id_empresa;
+    -- A exclusão em cascata vai automaticamente remover os funcionários relacionados
+END
+$$
+DELIMITER ;
+DELIMITER $$
+CREATE TRIGGER `insert_empresa_app` AFTER INSERT ON `empresa` FOR EACH ROW BEGIN
+    -- Inserir nova empresa no app_empresas quando criada no site
+    INSERT INTO `app_empresas`.`empresas` 
+    (`nome`, `email`, `senha`, `data_cadastro`, `site_empresa_id`) 
+    VALUES 
+    (NEW.nome, NEW.email_corp, '$2y$10$gVkC1tSsNFcgkuHgWA8Y0esHFKcuNWbljVEAyWjzSWl/UdfKVSERy', NOW(), NEW.id_empresa);
+    -- Nota: A senha é um placeholder, deverá ser definida via API ou outro meio
 END
 $$
 DELIMITER ;
@@ -201,15 +228,15 @@ CREATE TABLE `funcionario` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 --
--- Extraindo dados da tabela `funcionario`
---
-
-INSERT INTO `funcionario` (`id_fun`, `num_mecanografico`, `nome`, `foto`, `bi`, `emissao_bi`, `validade_bi`, `data_nascimento`, `pais`, `morada`, `genero`, `num_agregados`, `contato_emergencia`, `nome_contato_emergencia`, `telemovel`, `email`, `estado`, `cargo`, `departamento`, `tipo_trabalhador`, `num_conta_bancaria`, `banco`, `iban`, `salario_base`, `num_ss`, `data_admissao`, `empresa_id`, `status`) VALUES
-(1, 'EMP-0001', 'Silvestre Luís', NULL, '234234', '2005-12-12', '2025-12-12', '2000-12-12', 'estados_unidos', 'Mutamba', '', 12, '922608606', 'Jorge', '922456789', 'sam@gmail.com', 'Ativo', 'Engenheiro Civil', 'rh', 'Efetivo', '99999', 'BAI', '123', 250.00, '123', '2025-05-03', 2, 'pendente_biometria');
-
---
 -- Acionadores `funcionario`
 --
+DELIMITER $$
+CREATE TRIGGER `delete_funcionario_app` AFTER DELETE ON `funcionario` FOR EACH ROW BEGIN
+    -- Excluir funcionário no app_empresas
+    DELETE FROM `app_empresas`.`employees` WHERE id = OLD.num_mecanografico;
+END
+$$
+DELIMITER ;
 DELIMITER $$
 CREATE TRIGGER `gerar_num_mecanografico` BEFORE INSERT ON `funcionario` FOR EACH ROW BEGIN
     DECLARE ultimo_num INT;
@@ -224,6 +251,37 @@ CREATE TRIGGER `gerar_num_mecanografico` BEFORE INSERT ON `funcionario` FOR EACH
 
     -- Atribui o número mecanográfico ao novo funcionário
     SET NEW.num_mecanografico = novo_num;
+END
+$$
+DELIMITER ;
+DELIMITER $$
+CREATE TRIGGER `sync_funcionario_app` AFTER INSERT ON `funcionario` FOR EACH ROW BEGIN
+    DECLARE app_empresa_id INT;
+    
+    -- Encontrar o ID da empresa no app_empresas
+    SELECT id INTO app_empresa_id 
+    FROM `app_empresas`.`empresas` 
+    WHERE site_empresa_id = NEW.empresa_id
+    LIMIT 1;
+    
+    IF app_empresa_id IS NOT NULL THEN
+        -- Inserir funcionário no app_empresas
+        INSERT INTO `app_empresas`.`employees` 
+        (`id`, `name`, `position`, `department`, `digital_signature`, `empresa_id`) 
+        VALUES 
+        (NEW.num_mecanografico, NEW.nome, NEW.cargo, NEW.departamento, 0, app_empresa_id);
+    END IF;
+END
+$$
+DELIMITER ;
+DELIMITER $$
+CREATE TRIGGER `update_funcionario_app` AFTER UPDATE ON `funcionario` FOR EACH ROW BEGIN
+    -- Atualizar funcionário no app_empresas
+    UPDATE `app_empresas`.`employees` 
+    SET `name` = NEW.nome, 
+        `position` = NEW.cargo, 
+        `department` = NEW.departamento
+    WHERE id = NEW.num_mecanografico;
 END
 $$
 DELIMITER ;
@@ -323,7 +381,7 @@ ALTER TABLE `redefinicao_senha`
 -- AUTO_INCREMENT de tabela `adm`
 --
 ALTER TABLE `adm`
-  MODIFY `id_adm` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id_adm` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT de tabela `ausencias`
@@ -347,7 +405,7 @@ ALTER TABLE `documentos`
 -- AUTO_INCREMENT de tabela `empresa`
 --
 ALTER TABLE `empresa`
-  MODIFY `id_empresa` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id_empresa` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de tabela `falta`
@@ -359,7 +417,7 @@ ALTER TABLE `falta`
 -- AUTO_INCREMENT de tabela `funcionario`
 --
 ALTER TABLE `funcionario`
-  MODIFY `id_fun` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id_fun` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de tabela `redefinicao_senha`
