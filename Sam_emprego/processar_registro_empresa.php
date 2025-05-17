@@ -10,7 +10,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $senha = $_POST['senha'] ?? '';
     $confirmarSenha = $_POST['confirmarSenha'] ?? '';
-    $site = trim($_POST['site'] ?? '');
+    $telefone = trim($_POST['telefone'] ?? '');
+    $endereco = trim($_POST['endereco'] ?? '');
+    $setor = trim($_POST['setor'] ?? '');
+    $tamanho = trim($_POST['tamanho'] ?? '');
+    $website = trim($_POST['website'] ?? '');
     
     // Validação básica dos dados
     $erros = [];
@@ -57,13 +61,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Inicia a transação
             $pdo->beginTransaction();
             
-            // Cria a empresa
-            $stmt = $pdo->prepare("
-                INSERT INTO empresas_recrutamento (nome, descricao, email, senha, site, site_empresa_id, data_cadastro) 
-                VALUES (?, ?, ?, ?, ?, 1, NOW())
-            ");
+            // Verificar a estrutura da tabela para determinar as colunas disponíveis
+            $stmt = $pdo->prepare("SHOW COLUMNS FROM empresas_recrutamento");
+            $stmt->execute();
+            $colunas = $stmt->fetchAll(PDO::FETCH_COLUMN);
             
-            $stmt->execute([$nome, $descricao, $email, $senhaHash, $site]);
+            $temSiteEmpresaId = in_array('site_empresa_id', $colunas);
+            $temDataCadastro = in_array('data_cadastro', $colunas);
+            
+            // Prepara o SQL de acordo com a estrutura da tabela
+            if ($temSiteEmpresaId) {
+                // Schema antigo
+                $stmt = $pdo->prepare("
+                    INSERT INTO empresas_recrutamento (nome, descricao, email, senha, site, site_empresa_id, data_cadastro) 
+                    VALUES (?, ?, ?, ?, ?, 1, NOW())
+                ");
+                $stmt->execute([$nome, $descricao, $email, $senhaHash, $website]);
+            } else {
+                // Schema novo
+                $dataField = $temDataCadastro ? 'data_cadastro' : 'data_registro';
+                
+                $stmt = $pdo->prepare("
+                    INSERT INTO empresas_recrutamento (
+                        nome, email, senha, telefone, endereco, 
+                        descricao, setor, tamanho, website, 
+                        $dataField, status
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'Ativo')
+                ");
+                
+                $stmt->execute([
+                    $nome, $email, $senhaHash, $telefone, $endereco,
+                    $descricao, $setor, $tamanho, $website
+                ]);
+            }
+            
             $empresaId = $pdo->lastInsertId();
             
             $pdo->commit();
@@ -87,7 +119,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'nome' => $nome,
             'descricao' => $descricao,
             'email' => $email,
-            'site' => $site
+            'telefone' => $telefone,
+            'endereco' => $endereco,
+            'setor' => $setor,
+            'tamanho' => $tamanho,
+            'website' => $website
         ];
         header('Location: registro_empresa.php');
         exit;

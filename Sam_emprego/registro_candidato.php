@@ -20,10 +20,90 @@ unset($_SESSION['dados_form_candidato']);
     <title>SAM - Cadastro de Candidato</title>
 </head>
 <style>
-    .logo{
+    /* Cores principais */
+    :root {
+        --primary-green: #3EB489;
+        --primary-blue: #3EB489;
+        --hover-green: #36a078;
+        --hover-blue: #3EB489;
+        --text-dark: #333;
+        --bg-light: #f8f9fa;
+        --border-color: #e0e0e0;
+        --shadow-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .logo {
         height: 80px;
     }
-    
+
+    /* Estilização do container de cadastro */
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: calc(100vh - 120px);
+        padding: 2rem 1rem;
+    }
+
+    /* Card de cadastro aprimorado */
+    .login-card {
+        background-color: #fff;
+        border-radius: 12px;
+        box-shadow: 0 8px 20px var(--shadow-color);
+        width: 100%;
+        max-width: 550px;
+        padding: 2.5rem;
+        transition: transform 0.3s ease;
+    }
+
+    .login-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .login-title {
+        color: var(#3EB489);
+        text-align: center;
+        margin-bottom: 1.5rem;
+        font-weight: 600;
+        font-size: 1.8rem;
+    }
+
+    /* Melhorias nos form groups */
+    .form-group {
+        margin-bottom: 1.5rem;
+        position: relative;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #555;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-sizing: border-box;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: var(--primary-blue);
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+    }
+
+    .form-group input::placeholder {
+        color: #aaa;
+    }
+
+    /* Layout para form rows (campos lado a lado) */
     .form-row {
         display: flex;
         gap: 1rem;
@@ -34,48 +114,57 @@ unset($_SESSION['dados_form_candidato']);
         flex: 1;
         margin-bottom: 0;
     }
-    
-    .login-card {
-        max-width: 600px;
-    }
-    
-    .file-input-container {
-        position: relative;
-        overflow: hidden;
-        display: inline-block;
+
+    /* Botão de continuar */
+    .btn-continuar {
         width: 100%;
-    }
-    
-    .file-input {
-        position: absolute;
-        left: 0;
-        top: 0;
-        opacity: 0;
-        width: 100%;
-        height: 100%;
+        padding: 0.85rem;
+        background-color: var(--primary-blue);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
         cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 1rem;
+        margin-bottom: 1rem;
     }
-    
-    .file-input-label {
-        display: inline-block;
-        padding: 0.8rem;
-        background-color: #f5f5f5;
-        color: #333;
-        border: 1px dashed #ddd;
-        border-radius: 5px;
-        width: 100%;
+
+    .btn-continuar:hover {
+        background-color: var(--hover-blue);
+        transform: translateY(-2px);
+    }
+
+    .btn-continuar:active {
+        transform: translateY(0);
+    }
+
+    /* Estilos para link de login */
+    .signup-link {
         text-align: center;
-        cursor: pointer;
+        margin: 1.2rem 0;
+        font-size: 0.9rem;
+        color: #555;
     }
-    
-    .file-input-label:hover {
-        background-color: #eee;
+
+    .signup-link a {
+        color: var(--primary-blue);
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.2s;
     }
-    
+
+    .signup-link a:hover {
+        color: var(--hover-blue);
+        text-decoration: underline;
+    }
+
+    /* Estilos para alerts */
     .alert {
-        padding: 10px 15px;
-        margin-bottom: 20px;
-        border-radius: 5px;
+        padding: 1rem 1.2rem;
+        margin-bottom: 1.5rem;
+        border-radius: 8px;
         font-size: 0.9rem;
     }
     
@@ -89,6 +178,41 @@ unset($_SESSION['dados_form_candidato']);
         background-color: #d4edda;
         border: 1px solid #c3e6cb;
         color: #155724;
+    }
+
+    .alert ul {
+        margin: 0.5rem 0;
+        padding-left: 1.2rem;
+    }
+
+    .alert li {
+        margin-bottom: 0.3rem;
+    }
+
+    /* Responsividade */
+    @media (max-width: 768px) {
+        .login-card {
+            padding: 2rem;
+        }
+        
+        .form-row {
+            flex-direction: column;
+            gap: 0;
+        }
+        
+        .form-row .form-group {
+            margin-bottom: 1.5rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .login-card {
+            padding: 1.5rem;
+        }
+        
+        .login-title {
+            font-size: 1.5rem;
+        }
     }
 </style>
 <body>
@@ -133,7 +257,7 @@ unset($_SESSION['dados_form_candidato']);
             
             <?php if (!empty($erros)): ?>
                 <div class="alert alert-danger">
-                    <ul style="margin: 0; padding-left: 20px;">
+                    <ul>
                         <?php foreach ($erros as $erro): ?>
                             <li><?php echo htmlspecialchars($erro); ?></li>
                         <?php endforeach; ?>
@@ -141,42 +265,29 @@ unset($_SESSION['dados_form_candidato']);
                 </div>
             <?php endif; ?>
             
-            <form method="POST" action="processar_registro_candidato.php" id="registroCandidatoForm" enctype="multipart/form-data">
+            <form method="POST" action="processar_registro_inicial.php" id="registroCandidatoForm">
                 <div class="form-group">
-                    <label for="nome">Nome Completo</label>
+                    <label for="email">Email</label>
                     <input 
-                        type="text" 
-                        id="nome" 
-                        name="nome" 
-                        placeholder="Seu nome completo" 
-                        value="<?php echo htmlspecialchars($dadosForm['nome'] ?? ''); ?>"
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        placeholder="seu.email@exemplo.com" 
+                        value="<?php echo htmlspecialchars($dadosForm['email'] ?? ''); ?>"
                         required
                     >
                 </div>
                 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="email">Email</label>
-                        <input 
-                            type="email" 
-                            id="email" 
-                            name="email" 
-                            placeholder="seu.email@exemplo.com" 
-                            value="<?php echo htmlspecialchars($dadosForm['email'] ?? ''); ?>"
-                            required
-                        >
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="telefone">Telefone</label>
-                        <input 
-                            type="tel" 
-                            id="telefone" 
-                            name="telefone" 
-                            placeholder="(00) 00000-0000" 
-                            value="<?php echo htmlspecialchars($dadosForm['telefone'] ?? ''); ?>"
-                        >
-                    </div>
+                <div class="form-group">
+                    <label for="telefone">Telefone</label>
+                    <input 
+                        type="tel" 
+                        id="telefone" 
+                        name="telefone" 
+                        placeholder="(00) 00000-0000" 
+                        value="<?php echo htmlspecialchars($dadosForm['telefone'] ?? ''); ?>"
+                        required
+                    >
                 </div>
                 
                 <div class="form-row">
@@ -203,55 +314,12 @@ unset($_SESSION['dados_form_candidato']);
                     </div>
                 </div>
                 
-                <div class="form-group">
-                    <label for="data_nascimento">Data de Nascimento</label>
-                    <input 
-                        type="date" 
-                        id="data_nascimento" 
-                        name="data_nascimento" 
-                        value="<?php echo htmlspecialchars($dadosForm['data_nascimento'] ?? ''); ?>"
-                        required
-                    >
-                </div>
-                
-                <div class="form-group">
-                    <label for="cv_anexo">Currículo (PDF)</label>
-                    <div class="file-input-container">
-                        <label class="file-input-label" id="fileLabel">
-                            <?php if (!empty($dadosForm['cv_anexo_nome'])): ?>
-                                <?php echo htmlspecialchars($dadosForm['cv_anexo_nome']); ?>
-                            <?php else: ?>
-                                Clique aqui para anexar seu currículo
-                            <?php endif; ?>
-                        </label>
-                        <input 
-                            type="file" 
-                            id="cv_anexo" 
-                            name="cv_anexo" 
-                            accept=".pdf,.doc,.docx" 
-                            class="file-input"
-                            onchange="updateFileLabel(this)"
-                        >
-                    </div>
-                </div>
-                
-                <button type="submit" class="btn-continuar">Cadastrar Currículo</button>
+                <button type="submit" class="btn-continuar">Continuar</button>
                 <div class="signup-link">
                     Já possui uma conta? <a href="login.php">Entrar</a>
                 </div>
             </form>
         </div>
     </div>
-    
-    <script>
-        function updateFileLabel(input) {
-            const label = document.getElementById('fileLabel');
-            if (input.files.length > 0) {
-                label.textContent = input.files[0].name;
-            } else {
-                label.textContent = 'Clique aqui para anexar seu currículo';
-            }
-        }
-    </script>
 </body>
-</html> 
+</html>

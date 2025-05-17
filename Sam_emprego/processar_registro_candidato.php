@@ -11,6 +11,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $senha = $_POST['senha'] ?? '';
     $confirmarSenha = $_POST['confirmarSenha'] ?? '';
     $data_nascimento = $_POST['data_nascimento'] ?? '';
+    $endereco = trim($_POST['endereco'] ?? '');
+    $formacao = trim($_POST['formacao'] ?? '');
+    $experiencia = trim($_POST['experiencia'] ?? '');
+    $habilidades = trim($_POST['habilidades'] ?? '');
     
     // Validação básica dos dados
     $erros = [];
@@ -53,11 +57,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     // Processa o upload do currículo, se fornecido
-    $cv_anexo = null;
-    $cv_anexo_nome = null;
+    $curriculo_path = null;
+    $curriculo_path_nome = null;
     
-    if (isset($_FILES['cv_anexo']) && $_FILES['cv_anexo']['error'] == 0) {
-        $arquivo = $_FILES['cv_anexo'];
+    if (isset($_FILES['curriculo_path']) && $_FILES['curriculo_path']['error'] == 0) {
+        $arquivo = $_FILES['curriculo_path'];
         $extensao = pathinfo($arquivo['name'], PATHINFO_EXTENSION);
         $extensoes_permitidas = ['pdf', 'doc', 'docx'];
         
@@ -80,8 +84,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!move_uploaded_file($arquivo['tmp_name'], $caminho)) {
                 $erros[] = "Falha ao fazer upload do currículo.";
             } else {
-                $cv_anexo = $caminho;
-                $cv_anexo_nome = $arquivo['name'];
+                $curriculo_path = $caminho;
+                $curriculo_path_nome = $arquivo['name'];
             }
         }
     }
@@ -95,13 +99,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Inicia a transação
             $pdo->beginTransaction();
             
-            // Insere o candidato
-            $stmt = $pdo->prepare("
-                INSERT INTO candidatos (nome, email, senha, telefone, data_nascimento, cv_anexo, data_cadastro)
-                VALUES (?, ?, ?, ?, ?, ?, NOW())
-            ");
+            // Verifica se a coluna data_registro existe na tabela candidatos
+            $stmt = $pdo->prepare("SHOW COLUMNS FROM candidatos LIKE 'data_registro'");
+            $stmt->execute();
+            $data_registro_exists = $stmt->rowCount() > 0;
             
-            $stmt->execute([$nome, $email, $senhaHash, $telefone, $data_nascimento, $cv_anexo]);
+            // Verifica se as colunas formacao, experiencia, habilidades existem
+            $stmt = $pdo->prepare("SHOW COLUMNS FROM candidatos LIKE 'formacao'");
+            $stmt->execute();
+            $formacao_exists = $stmt->rowCount() > 0;
+            
+            if ($formacao_exists && $data_registro_exists) {
+                // Usa o novo schema
+                $stmt = $pdo->prepare("
+                    INSERT INTO candidatos (nome, email, senha, telefone, data_nascimento, endereco, formacao, 
+                                          experiencia, habilidades, curriculo_path, data_registro)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ");
+                
+                $stmt->execute([
+                    $nome, $email, $senhaHash, $telefone, $data_nascimento, $endereco, 
+                    $formacao, $experiencia, $habilidades, $curriculo_path
+                ]);
+            } else {
+                // Usa o schema antigo
+                $stmt = $pdo->prepare("
+                    INSERT INTO candidatos (nome, email, senha, telefone, data_nascimento, cv_anexo, data_cadastro)
+                    VALUES (?, ?, ?, ?, ?, ?, NOW())
+                ");
+                
+                $stmt->execute([$nome, $email, $senhaHash, $telefone, $data_nascimento, $curriculo_path]);
+            }
+            
             $candidatoId = $pdo->lastInsertId();
             
             $pdo->commit();
@@ -116,8 +145,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->rollBack();
             
             // Remove o arquivo de currículo se foi feito upload
-            if ($cv_anexo && file_exists($cv_anexo)) {
-                unlink($cv_anexo);
+            if ($curriculo_path && file_exists($curriculo_path)) {
+                unlink($curriculo_path);
             }
             
             $erros[] = "Erro ao cadastrar: " . $e->getMessage();
@@ -132,7 +161,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'email' => $email,
             'telefone' => $telefone,
             'data_nascimento' => $data_nascimento,
-            'cv_anexo_nome' => $cv_anexo_nome
+            'endereco' => $endereco,
+            'formacao' => $formacao,
+            'experiencia' => $experiencia,
+            'habilidades' => $habilidades,
+            'curriculo_path_nome' => $curriculo_path_nome
         ];
         header('Location: registro_candidato.php');
         exit;

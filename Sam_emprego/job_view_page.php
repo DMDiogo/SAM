@@ -1,3 +1,12 @@
+<?php
+session_start();
+// Verifica se o usuário está logado
+if (!isset($_SESSION['user_id'])) {
+    // Redireciona para a página de login
+    header("Location: login.php");
+    exit();
+}
+?>
 <!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -31,7 +40,7 @@
   </div>
     
     <div class="posting-container">
-      <a href="job_search_page.html" class="back-link">← Voltar à lista de empregos</a>
+      <a href="job_search_page.php" class="back-link">← Voltar à lista de empregos</a>
       <div class="job-card">
         <h1 class="job-title">Assistente de Logística</h1>
         <div class="job-company">Empregador: <strong>Grupo Kurt</strong>

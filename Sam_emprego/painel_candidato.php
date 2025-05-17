@@ -1,58 +1,111 @@
 <?php
 session_start();
-if (!isset($_SESSION["candidato_id"])) {
+require_once 'conexao.php';
+
+// Verifica se o usuário está logado como candidato
+if (!isset($_SESSION['candidato_id'])) {
+    // Redireciona para a página de login
     header("Location: login.php");
-    exit;
+    exit();
 }
 
-require_once 'config/database.php';
+// Recupera mensagem de sucesso, se existir
+$mensagem_sucesso = $_SESSION['mensagem_sucesso'] ?? '';
+unset($_SESSION['mensagem_sucesso']);
 
-// Buscar informações do candidato
-try {
-    $stmt = $pdo->prepare("SELECT * FROM candidatos WHERE id = ?");
-    $stmt->execute([$_SESSION['candidato_id']]);
-    $candidato = $stmt->fetch();
+// Recupera os dados do candidato
+$candidato_id = $_SESSION['candidato_id'];
+$stmt = $conn->prepare("SELECT * FROM candidatos WHERE id = ?");
+$stmt->bind_param("i", $candidato_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$candidato = $result->fetch_assoc();
+
+// Impede acesso se o perfil não estiver completo
+if (isset($candidato['perfil_completo']) && $candidato['perfil_completo'] == 0) {
+    header("Location: job_register_page.php");
+    exit();
+}
+
+// Recupera as candidaturas do candidato (se a tabela existir)
+$candidaturas = [];
+$temCandidaturas = false;
+
+// Verifica se as tabelas candidaturas e vagas existem
+$tabelas_existem = true;
+$result = $conn->query("SHOW TABLES LIKE 'candidaturas'");
+if ($result->num_rows == 0) {
+    $tabelas_existem = false;
+}
+
+$result = $conn->query("SHOW TABLES LIKE 'vagas'");
+if ($result->num_rows == 0) {
+    $tabelas_existem = false;
+}
+
+if ($tabelas_existem) {
+    $query = "SELECT c.*, v.titulo as vaga_titulo, v.empresa 
+              FROM candidaturas c 
+              JOIN vagas v ON c.vaga_id = v.id 
+              WHERE c.candidato_id = ? 
+              ORDER BY c.data_candidatura DESC";
     
-    // Buscar candidaturas do candidato
-    $stmt = $pdo->prepare("
-        SELECT c.*, v.titulo, v.empresa_id, e.nome as empresa_nome
-        FROM candidaturas c
-        JOIN vagas v ON c.vaga_id = v.id
-        JOIN empresas_recrutamento e ON v.empresa_id = e.id
-        WHERE c.candidato_id = ?
-        ORDER BY c.data_candidatura DESC
-    ");
-    $stmt->execute([$_SESSION['candidato_id']]);
-    $candidaturas = $stmt->fetchAll();
-} catch (PDOException $e) {
-    $erro = "Erro ao carregar dados: " . $e->getMessage();
+    if ($stmt = $conn->prepare($query)) {
+        $stmt->bind_param("i", $candidato_id);
+        $stmt->execute();
+        $candidaturas_result = $stmt->get_result();
+        $temCandidaturas = true;
+        
+        while ($row = $candidaturas_result->fetch_assoc()) {
+            $candidaturas[] = $row;
+        }
+    }
 }
+
+// Calcula estatísticas
+$totalCandidaturas = count($candidaturas);
+$emProcesso = 0;
+$aprovadas = 0;
+
+foreach ($candidaturas as $candidatura) {
+    $status = strtolower($candidatura['status'] ?? '');
+    if ($status == 'em análise' || $status == 'entrevista') {
+        $emProcesso++;
+    } elseif ($status == 'aprovado' || $status == 'aprovada') {
+        $aprovadas++;
+    }
+}
+
+// Calcula o progresso do perfil
+$progress = 20; // Base progress (apenas por ter criado a conta)
+if (!empty($candidato['telefone'])) $progress += 20;
+if (!empty($candidato['data_nascimento'])) $progress += 20;
+if (!empty($candidato['curriculo_path'] ?? $candidato['cv_anexo'] ?? '')) $progress += 40;
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel do Candidato</title>
+    <link rel="icon" type="" href="sam2-05.png">
+    <link rel="stylesheet" href="../all.css/emprego.css/emp_search.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../all.css/login.css">
-    <link rel="stylesheet" href="../all.css/emprego.css/emp_search.css">
+    <title>SAM - Painel do Candidato</title>
     <style>
         :root {
             --primary-color: #3EB489;
             --primary-light: #4fc89a;
             --primary-dark: #339873;
-            --secondary-color: #2c3e50;
+            --secondary-color:rgb(84, 115, 146);
             --light-gray: #f5f7fa;
             --medium-gray: #e9ecef;
             --dark-gray: #6c757d;
             --box-shadow: 0 3px 15px rgba(0,0,0,0.1);
             --transition: all 0.3s ease;
             --border-radius: 12px;
-            --container-width: 1200px;
         }
-        
+
         body {
             font-family: 'Poppins', sans-serif;
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
@@ -61,100 +114,98 @@ try {
             color: #333;
             line-height: 1.6;
         }
-        
-        .container {
-            max-width: var(--container-width);
-            margin: 20px auto;
-            padding: 20px;
-        }
-        
-        /* Header styles are preserved */
+
         .header {
-            padding: 10px 0;
-            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: white;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            width: 100%;
+            box-shadow: none;
         }
-        
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            height: 80px;
+        }
+
         .logo img {
             height: 80px;
         }
-        
-        .search-jobs-button {
-            background-color: #3EB489;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 45px;
+
+        .nav-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav-menu a {
+            color: var(--secondary-color);
             text-decoration: none;
-            margin-right: 10px;
             font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            height: 33px;
+            padding: 8px 15px;
+            border-radius: 50px;
+            transition: var(--transition);
         }
-        
-        .search-jobs-button i {
-            margin-right: 6px;
+
+        .nav-menu a:hover {
+            background-color: var(--light-gray);
+            color: var(--primary-color);
         }
-        
-        .user-menu {
+
+        .nav-menu a.active {
+            color: var(--primary-color);
+            position: relative;
+        }
+
+        .nav-menu a.active::after {
+            content: '';
             position: absolute;
-            top: 60px;
-            right: 50px;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            z-index: 100;
-            display: none;
-            width: 200px;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 3px;
+            background-color: var(--primary-color);
+            border-radius: 10px;
         }
-        
-        .user-menu.visible {
-            display: block;
+
+
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
         }
-        
-        .user-menu-item {
-            padding: 12px 16px;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .user-menu-item:last-child {
-            border-bottom: none;
-        }
-        
-        .user-menu-item a {
-            color: #333;
-            text-decoration: none;
-            display: block;
-        }
-        
-        .user-menu-item:hover {
-            background-color: #f5f5f5;
-        }
-        
-        /* New styles below */
-        .content-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
-        }
-        
-        @media (max-width: 992px) {
-            .content-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        
+
+        /* Welcome section */
         .welcome-section {
-            grid-column: 1 / -1;
             background: linear-gradient(135deg, white 0%, #f8f9fa 100%);
             border-radius: var(--border-radius);
             padding: 30px;
-            margin-bottom: 10px;
+            margin-bottom: 25px;
             box-shadow: var(--box-shadow);
             position: relative;
             overflow: hidden;
             border-left: 5px solid var(--primary-color);
         }
-        
+
         .welcome-section::before {
             content: '';
             position: absolute;
@@ -166,295 +217,89 @@ try {
             border-radius: 50%;
             transform: translate(50%, -50%);
         }
-        
-        .welcome-section h1 {
-            color: var(--primary-color);
-            margin-bottom: 10px;
+
+        .welcome-message {
             font-size: 1.8rem;
+            color: var(--secondary-color);
+            margin-bottom: 10px;
             position: relative;
+            font-weight: 600;
         }
-        
-        .welcome-section p {
+
+        .welcome-message span {
+            color: var(--primary-color);
+        }
+
+        .welcome-subtitle {
             color: var(--dark-gray);
             font-size: 1.1rem;
             max-width: 80%;
         }
-        
-        .card {
-            background: white;
+
+        /* Alerts */
+        .alert {
+            padding: 15px;
+            margin-bottom: 25px;
             border-radius: var(--border-radius);
-            padding: 25px;
-            margin-bottom: 20px;
-            box-shadow: var(--box-shadow);
-            transition: var(--transition);
-            height: fit-content;
+            font-size: 0.95rem;
+            animation: fadeIn 0.5s ease-in-out;
         }
         
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        .alert-success {
+            background-color: #d4edda;
+            border-left: 4px solid var(--primary-color);
+            color: #155724;
         }
-        
-        .card h2 {
-            color: var(--secondary-color);
-            margin-bottom: 20px;
-            font-size: 1.5rem;
-            position: relative;
-            padding-bottom: 12px;
-        }
-        
-        .card h2::after {
-            content: '';
-            position: absolute;
-            left: 0;
-            bottom: 0;
-            height: 3px;
-            width: 60px;
-            background-color: var(--primary-color);
-            border-radius: 10px;
-        }
-        
-        .action-btn {
-            display: inline-block;
-            background-color: var(--primary-color);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 50px;
-            text-decoration: none;
-            font-weight: 500;
-            margin-top: 15px;
-            transition: var(--transition);
-            border: none;
-            cursor: pointer;
-            box-shadow: 0 2px 5px rgba(62, 180, 137, 0.3);
-        }
-        
-        .action-btn:hover {
-            background-color: var(--primary-dark);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(62, 180, 137, 0.4);
-        }
-        
-        .profile-info {
+
+        /* Grid layout */
+        .content-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
+            gap: 24px;
         }
-        
-        @media (max-width: 768px) {
-            .profile-info {
+
+        @media (max-width: 992px) {
+            .content-grid {
                 grid-template-columns: 1fr;
             }
         }
-        
-        .profile-item {
-            margin-bottom: 15px;
-            padding: 15px;
-            background-color: var(--light-gray);
-            border-radius: 8px;
-            transition: var(--transition);
-        }
-        
-        .profile-item:hover {
-            background-color: #e6f7f2;
-        }
-        
-        .profile-item strong {
-            display: block;
-            margin-bottom: 8px;
-            color: var(--secondary-color);
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .profile-item span {
-            display: block;
-            font-size: 1.1rem;
-            color: #333;
-        }
-        
-        .profile-item a {
-            color: var(--primary-color);
-            text-decoration: none;
-            font-weight: 500;
-            transition: var(--transition);
-        }
-        
-        .profile-item a:hover {
-            color: var(--primary-dark);
-            text-decoration: underline;
-        }
-        
-        .candidaturas-container {
-            margin-top: 25px;
-            max-height: 500px;
-            overflow-y: auto;
-            scrollbar-width: thin;
-            scrollbar-color: var(--primary-color) var(--light-gray);
-            padding-right: 10px;
-        }
-        
-        .candidaturas-container::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        .candidaturas-container::-webkit-scrollbar-track {
-            background: var(--light-gray);
-            border-radius: 10px;
-        }
-        
-        .candidaturas-container::-webkit-scrollbar-thumb {
-            background-color: var(--primary-light);
-            border-radius: 10px;
-        }
-        
-        .candidatura-item {
-            border: none;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 15px;
+
+        /* Cards */
+        .panel-section {
             background: white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            margin-bottom: 25px;
+            overflow: hidden;
             transition: var(--transition);
-            border-left: 4px solid var(--primary-color);
+            height: fit-content;
         }
-        
-        .candidatura-item:hover {
-            transform: translateX(5px);
-            box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+
+        .panel-section:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
         }
-        
-        .candidatura-item h3 {
-            margin-top: 0;
-            margin-bottom: 12px;
-            color: var(--secondary-color);
-            font-size: 1.2rem;
-        }
-        
-        .candidatura-item p {
-            margin: 10px 0;
-            color: #555;
-            line-height: 1.7;
-        }
-        
-        .candidatura-item p strong {
-            color: var(--secondary-color);
-            display: inline-block;
-            width: 140px;
-        }
-        
-        .candidatura-actions {
-            margin-top: 15px;
-            display: flex;
-            gap: 10px;
-        }
-        
-        .btn-small {
-            padding: 8px 15px;
-            font-size: 0.9rem;
-            border-radius: 50px;
-            text-decoration: none;
-            color: white;
-            transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .btn-small:hover {
-            transform: translateY(-2px);
-        }
-        
-        .btn-view {
+
+        .panel-header {
             background-color: var(--primary-color);
-            box-shadow: 0 2px 5px rgba(62, 180, 137, 0.3);
-        }
-        
-        .btn-view:hover {
-            background-color: var(--primary-dark);
-            box-shadow: 0 4px 8px rgba(62, 180, 137, 0.4);
-        }
-        
-        .status-badge {
-            display: inline-block;
-            padding: 5px 12px;
-            border-radius: 50px;
-            font-size: 0.75rem;
-            font-weight: 600;
             color: white;
-            margin-left: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .status-recebida { 
-            background-color: #6c757d; 
-            box-shadow: 0 2px 5px rgba(108, 117, 125, 0.3);
-        }
-        
-        .status-analise { 
-            background-color: #ffc107; 
-            color: #212529; 
-            box-shadow: 0 2px 5px rgba(255, 193, 7, 0.3);
-        }
-        
-        .status-entrevista { 
-            background-color: #17a2b8; 
-            box-shadow: 0 2px 5px rgba(23, 162, 184, 0.3);
-        }
-        
-        .status-aprovada { 
-            background-color: #28a745; 
-            box-shadow: 0 2px 5px rgba(40, 167, 69, 0.3);
-        }
-        
-        .status-rejeitada { 
-            background-color: #dc3545; 
-            box-shadow: 0 2px 5px rgba(220, 53, 69, 0.3);
-        }
-        
-        .no-candidaturas {
-            text-align: center;
-            padding: 30px;
-            color: #666;
-            background-color: var(--light-gray);
-            border-radius: 10px;
-        }
-        
-        .no-candidaturas i {
-            font-size: 3rem;
-            color: var(--dark-gray);
-            margin-bottom: 15px;
-            display: block;
-        }
-        
-        .card-header {
+            padding: 16px 20px;
+            font-size: 1.2rem;
+            font-weight: 500;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
         }
-        
-        .card-header h2 {
-            margin-bottom: 0;
+
+        .panel-body {
+            padding: 25px;
         }
-        
-        .candidaturas-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        
+
+        /* Stats section */
         .stats-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 15px;
-            margin-top: 20px;
             margin-bottom: 25px;
         }
         
@@ -485,13 +330,49 @@ try {
             font-weight: 600;
             margin: 0;
         }
-        
+
+        /* Profile items */
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .profile-item {
+            margin-bottom: 15px;
+            padding: 15px;
+            background-color: var(--light-gray);
+            border-radius: 8px;
+            transition: var(--transition);
+        }
+
+        .profile-item:hover {
+            background-color: #e6f7f2;
+        }
+
+        .profile-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--secondary-color);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .profile-value {
+            display: block;
+            font-size: 1.1rem;
+            color: #333;
+            word-break: break-word;
+        }
+
+        /* Profile progress */
         .profile-progress {
             margin-top: 25px;
             padding: 20px;
-            background-color: white;
+            background-color: var(--light-gray);
             border-radius: 10px;
-            box-shadow: var(--box-shadow);
         }
         
         .progress-title {
@@ -513,7 +394,191 @@ try {
             border-radius: 5px;
             transition: width 0.5s ease;
         }
+
+        /* CV section */
+        .cv-container {
+            display: flex;
+            align-items: center;
+            background-color: var(--light-gray);
+            padding: 15px;
+            border-radius: var(--border-radius);
+            margin-bottom: 20px;
+            transition: var(--transition);
+        }
+
+        .cv-container:hover {
+            background-color: #e6f7f2;
+            transform: translateY(-3px);
+        }
+
+        .cv-icon {
+            width: 40px;
+            height: 40px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .cv-info {
+            flex-grow: 1;
+        }
+
+        .cv-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--secondary-color);
+        }
+
+        .cv-meta {
+            font-size: 0.9rem;
+            color: #777;
+        }
+
+        /* Table styles */
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th, 
+        .table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .table th {
+            background-color: var(--light-gray);
+            font-weight: 600;
+            color: var(--secondary-color);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+
+        .table tr:hover {
+            background-color: #f5f8fa;
+        }
+
+        /* Status badges */
+        .badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-success {
+            background-color: #d4f5e2;
+            color: var(--primary-dark);
+        }
+
+        .badge-warning {
+            background-color: #fef2d9;
+            color: #f39c12;
+        }
+
+        .badge-danger {
+            background-color: #fcded9;
+            color: #e74c3c;
+        }
+
+        /* Candidatura item */
+        .candidatura-item {
+            border: none;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: var(--transition);
+            border-left: 4px solid var(--primary-color);
+        }
         
+        .candidatura-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+        }
+        
+        .candidatura-item h3 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            color: var(--secondary-color);
+            font-size: 1.2rem;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            background-color: var(--light-gray);
+            border-radius: 10px;
+            transition: var(--transition);
+        }
+
+        .empty-state:hover {
+            background-color: #e6f7f2;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .empty-state p {
+            margin-top: 10px;
+            margin-bottom: 20px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(62, 180, 137, 0.4);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-outline:hover {
+            background-color: var(--primary-color);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* Animations */
         .fade-in {
             animation: fadeIn 0.5s ease-in-out;
         }
@@ -522,29 +587,45 @@ try {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .profile-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .welcome-subtitle {
+                max-width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Header mantido como solicitado -->
-        <div class="header">
+<header class="header">
+        <div class="header-content">
             <div class="logo">
-                <img src="../fotos/sam30-13.png" alt="SAM Logo">
+                <img src="../fotos/sam30-13.png" alt="SAM Emprego Logo">
             </div>
-            
+            <div class="nav-container">
+                <nav class="nav-menu">
+                    <a href="job_search_page.php">Vagas</a>
+                    <a href="curriculums.php">Meu Currículo</a>
+                    <a href="minhas_candidaturas.php">Candidaturas</a>
+                    <a href="painel_candidato.php" class="active">Perfil</a>
+                </nav>
+            </div>
             <div class="user-section">
-                <a href="job_search_page.php" class="search-jobs-button">
-                    <i class="fas fa-search"></i> Buscar Vagas
-                </a>
-                
-                <div class="user-dropdown" id="user-dropdown">
+                <div class="user-dropdown">
                     <div class="user-avatar">
                         <img src="../icones/icons-sam-19.svg" alt="" width="40">
                     </div>
-                    <span><?php echo htmlspecialchars($candidato['nome'] ?? $_SESSION['candidato_nome']); ?></span>
+                    <span><?php echo htmlspecialchars($candidato['nome'] ?? 'Candidato'); ?></span>
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
                 </div>
-                
                 <div class="settings-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3EB489" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3"></circle>
@@ -552,182 +633,262 @@ try {
                     </svg>
                 </div>
             </div>
-            
-            <div class="user-menu" id="user-menu">
-                <div class="user-menu-item">
-                    <a href="job_search_page.php">Buscar Vagas</a>
-                </div>
-                <div class="user-menu-item">
-                    <a href="painel_candidato.php">Meu Perfil</a>
-                </div>
-                <div class="user-menu-item">
-                    <a href="minhas_candidaturas.php">Minhas Candidaturas</a>
-                </div>
-                <div class="user-menu-item">
-                    <a href="logout.php">Sair</a>
-                </div>
-            </div>
         </div>
-
+    </header>
+    
+    <div class="container">
+        <?php if (!empty($mensagem_sucesso)): ?>
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($mensagem_sucesso); ?>
+            </div>
+        <?php endif; ?>
+        
         <div class="welcome-section fade-in">
-            <h1>Bem-vindo(a) ao seu painel, <?php echo htmlspecialchars($candidato['nome'] ?? $_SESSION['candidato_nome']); ?>!</h1>
-            <p>Gerencie seu perfil profissional e acompanhe todas as suas candidaturas de forma eficiente e organizada.</p>
+            <div class="welcome-message">
+                Bem-vindo, <span><?php echo htmlspecialchars($candidato['nome'] ?? 'Candidato'); ?></span>!
+            </div>
+            <p class="welcome-subtitle">Gerencie seu perfil profissional e acompanhe todas as suas candidaturas de forma eficiente e organizada.</p>
         </div>
         
         <div class="content-grid">
-            <div class="card fade-in">
-                <div class="card-header">
-                    <h2>Seu Perfil</h2>
-                    <a href="editar_perfil.php" class="action-btn">
-                        <i class="fas fa-edit"></i> Editar
+            <div class="panel-section fade-in">
+                <div class="panel-header">
+                    <div>Dados Pessoais</div>
+                    <a href="editar_perfil.php" class="btn btn-outline" style="background-color: white; color: var(--primary-color); padding: 6px 15px; font-size: 0.9rem;">
+                        <i class="fas fa-edit"></i> Editar Perfil
                     </a>
                 </div>
-                
-                <div class="stats-container">
-                    <div class="stat-card">
-                        <h3>Total de Candidaturas</h3>
-                        <div class="number"><?php echo isset($candidaturas) ? count($candidaturas) : '0'; ?></div>
+                <div class="panel-body">
+                    <!-- Estatísticas do perfil -->
+                    <div class="stats-container">
+                        <div class="stat-card">
+                            <h3>Total de Candidaturas</h3>
+                            <div class="number"><?php echo $totalCandidaturas; ?></div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>Em Processo</h3>
+                            <div class="number"><?php echo $emProcesso; ?></div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>Aprovadas</h3>
+                            <div class="number"><?php echo $aprovadas; ?></div>
+                        </div>
                     </div>
-                    
-                    <div class="stat-card">
-                        <h3>Em Processo</h3>
-                        <div class="number">
-                            <?php
-                            $emProcesso = 0;
-                            if (isset($candidaturas)) {
-                                foreach ($candidaturas as $candidatura) {
-                                    if ($candidatura['status'] == 'Analise' || $candidatura['status'] == 'Entrevista') {
-                                        $emProcesso++;
-                                    }
+                
+                    <div class="profile-grid">
+                        <div class="profile-item">
+                            <span class="profile-label">Nome Completo</span>
+                            <div class="profile-value"><?php echo htmlspecialchars($candidato['nome'] ?? 'Não informado'); ?></div>
+                        </div>
+                        
+                        <div class="profile-item">
+                            <span class="profile-label">E-mail</span>
+                            <div class="profile-value"><?php echo htmlspecialchars($candidato['email'] ?? 'Não informado'); ?></div>
+                        </div>
+                        
+                        <div class="profile-item">
+                            <span class="profile-label">Telefone</span>
+                            <div class="profile-value"><?php echo htmlspecialchars($candidato['telefone'] ?? 'Não informado'); ?></div>
+                        </div>
+                        
+                        <div class="profile-item">
+                            <span class="profile-label">Data de Nascimento</span>
+                            <div class="profile-value">
+                                <?php 
+                                if (!empty($candidato['data_nascimento'])) {
+                                    $data = new DateTime($candidato['data_nascimento']);
+                                    echo $data->format('d/m/Y');
+                                } else {
+                                    echo 'Não informado';
                                 }
-                            }
-                            echo $emProcesso;
-                            ?>
+                                ?>
+                            </div>
+                        </div>
+                        
+                        <div class="profile-item">
+                            <span class="profile-label">Endereço</span>
+                            <div class="profile-value"><?php echo htmlspecialchars($candidato['endereco'] ?? 'Não informado'); ?></div>
+                        </div>
+                        
+                        <div class="profile-item">
+                            <span class="profile-label">Status da Conta</span>
+                            <div class="profile-value">
+                                <?php 
+                                $status = $candidato['status'] ?? 'Pendente';
+                                $badge_class = '';
+                                
+                                switch ($status) {
+                                    case 'Ativo':
+                                        $badge_class = 'badge-success';
+                                        break;
+                                    case 'Inativo':
+                                        $badge_class = 'badge-danger';
+                                        break;
+                                    case 'Pendente':
+                                        $badge_class = 'badge-warning';
+                                        break;
+                                }
+                                ?>
+                                <span class="badge <?php echo $badge_class; ?>">
+                                    <?php echo htmlspecialchars($status); ?>
+                                </span>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="stat-card">
-                        <h3>Aprovadas</h3>
-                        <div class="number">
-                            <?php
-                            $aprovadas = 0;
-                            if (isset($candidaturas)) {
-                                foreach ($candidaturas as $candidatura) {
-                                    if ($candidatura['status'] == 'Aprovada') {
-                                        $aprovadas++;
-                                    }
-                                }
-                            }
-                            echo $aprovadas;
-                            ?>
+                    <!-- Progress Bar -->
+                    <div class="profile-progress">
+                        <div class="progress-title">
+                            <span>Perfil completo</span>
+                            <span><strong><?php echo $progress; ?>%</strong></span>
                         </div>
-                    </div>
-                </div>
-                
-                <div class="profile-info">
-                    <div class="profile-item">
-                        <strong>Nome</strong>
-                        <span><?php echo htmlspecialchars($candidato['nome'] ?? ''); ?></span>
-                    </div>
-                    
-                    <div class="profile-item">
-                        <strong>Email</strong>
-                        <span><?php echo htmlspecialchars($candidato['email'] ?? ''); ?></span>
-                    </div>
-                    
-                    <div class="profile-item">
-                        <strong>Telefone</strong>
-                        <span><?php echo htmlspecialchars($candidato['telefone'] ?? 'Não informado'); ?></span>
-                    </div>
-                    
-                    <div class="profile-item">
-                        <strong>Data de Nascimento</strong>
-                        <span><?php echo isset($candidato['data_nascimento']) ? date('d/m/Y', strtotime($candidato['data_nascimento'])) : 'Não informada'; ?></span>
-                    </div>
-                </div>
-                
-                <div class="profile-item">
-                    <strong>Currículo</strong>
-                    <span>
-                        <?php if (!empty($candidato['cv_anexo'])): ?>
-                            <a href="<?php echo htmlspecialchars($candidato['cv_anexo']); ?>" target="_blank">
-                                <i class="fas fa-file-pdf"></i> Visualizar currículo
-                            </a>
-                        <?php else: ?>
-                            <span style="color: #dc3545;">
-                                <i class="fas fa-exclamation-circle"></i> Nenhum currículo anexado
-                            </span>
-                        <?php endif; ?>
-                    </span>
-                </div>
-                
-                <div class="profile-progress">
-                    <div class="progress-title">
-                        <span>Perfil completo</span>
-                        <?php
-                        $progress = 20; // Base progress
-                        if (!empty($candidato['telefone'])) $progress += 20;
-                        if (!empty($candidato['data_nascimento'])) $progress += 20;
-                        if (!empty($candidato['cv_anexo'])) $progress += 40;
-                        ?>
-                        <span><strong><?php echo $progress; ?>%</strong></span>
-                    </div>
-                    <div class="progress-bar-container">
-                        <div class="progress-bar" style="width: <?php echo $progress; ?>%"></div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" style="width: <?php echo $progress; ?>%"></div>
+                        </div>
                     </div>
                 </div>
             </div>
             
-            <div class="card fade-in">
-                <div class="candidaturas-header">
-                    <h2>Suas Candidaturas</h2>
-                    <a href="job_search_page.php" class="action-btn">
-                        <i class="fas fa-search"></i> Novas Vagas
-                    </a>
+            <div class="panel-section fade-in">
+                <div class="panel-header">
+                    <div>Informações Profissionais</div>
                 </div>
-                
-                <div class="candidaturas-container">
-                    <?php if (isset($candidaturas) && count($candidaturas) > 0): ?>
-                        <?php foreach($candidaturas as $candidatura): ?>
-                            <div class="candidatura-item">
-                                <h3><?php echo htmlspecialchars($candidatura['titulo']); ?></h3>
-                                <p>
-                                    <strong>Empresa:</strong> <?php echo htmlspecialchars($candidatura['empresa_nome']); ?>
-                                </p>
-                                <p>
-                                    <strong>Data da candidatura:</strong> <?php echo date('d/m/Y', strtotime($candidatura['data_candidatura'])); ?>
-                                </p>
-                                <p>
-                                    <strong>Status:</strong> 
-                                    <span class="status-badge status-<?php echo strtolower($candidatura['status']); ?>">
-                                        <?php echo htmlspecialchars($candidatura['status']); ?>
-                                    </span>
-                                </p>
-                                <div class="candidatura-actions">
-                                    <a href="visualizar_vaga.php?id=<?php echo $candidatura['vaga_id']; ?>" class="btn-small btn-view">
-                                        <i class="fas fa-eye"></i> Ver Detalhes
-                                    </a>
+                <div class="panel-body">
+                    <div class="profile-item">
+                        <span class="profile-label">Formação Acadêmica</span>
+                        <div class="profile-value"><?php echo nl2br(htmlspecialchars($candidato['formacao'] ?? 'Não informado')); ?></div>
+                    </div>
+                    
+                    <div class="profile-item">
+                        <span class="profile-label">Experiência Profissional</span>
+                        <div class="profile-value"><?php echo nl2br(htmlspecialchars($candidato['experiencia'] ?? 'Não informado')); ?></div>
+                    </div>
+                    
+                    <div class="profile-item">
+                        <span class="profile-label">Habilidades</span>
+                        <div class="profile-value"><?php echo nl2br(htmlspecialchars($candidato['habilidades'] ?? 'Não informado')); ?></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel-section fade-in">
+                <div class="panel-header">
+                    <div>Currículo</div>
+                </div>
+                <div class="panel-body">
+                    <?php 
+                    $cv_path = $candidato['curriculo_path'] ?? $candidato['cv_anexo'] ?? null;
+                    
+                    if (!empty($cv_path)): 
+                    ?>
+                        <div class="cv-container">
+                            <div class="cv-icon">
+                                <i class="fas fa-file-pdf"></i>
+                            </div>
+                            <div class="cv-info">
+                                <div class="cv-name">Meu Currículo</div>
+                                <div class="cv-meta">
+                                    <?php 
+                                    $pathinfo = pathinfo($cv_path);
+                                    echo htmlspecialchars($pathinfo['basename']);
+                                    ?>
                                 </div>
                             </div>
-                        <?php endforeach; ?>
+                            <div>
+                                <a href="<?php echo htmlspecialchars($cv_path); ?>" target="_blank" class="btn btn-outline">
+                                    <i class="fas fa-eye"></i> Visualizar
+                                </a>
+                            </div>
+                        </div>
                     <?php else: ?>
-                        <div class="no-candidaturas">
-                            <i class="fas fa-briefcase"></i>
-                            <p>Você ainda não se candidatou a nenhuma vaga.</p>
-                            <p>Explore as vagas disponíveis e inicie sua jornada profissional!</p>
-                            <a href="job_search_page.php" class="action-btn">
-                                <i class="fas fa-search"></i> Buscar Vagas
+                        <div class="empty-state">
+                            <i class="fas fa-file-upload"></i>
+                            <p>Você ainda não enviou o seu currículo.</p>
+                            <a href="atualizar_curriculo.php" class="btn btn-primary">
+                                <i class="fas fa-upload"></i> Enviar Currículo
                             </a>
                         </div>
                     <?php endif; ?>
                 </div>
             </div>
+            
+            <?php if ($tabelas_existem && $temCandidaturas): ?>
+            <div class="panel-section fade-in">
+                <div class="panel-header">
+                    <div>Candidaturas Recentes</div>
+                    <a href="listar_vagas.php" class="btn btn-outline" style="background-color: white; color: var(--primary-color); padding: 6px 15px; font-size: 0.9rem;">
+                        <i class="fas fa-search"></i> Explorar Vagas
+                    </a>
+                </div>
+                <div class="panel-body">
+                    <?php if (count($candidaturas) > 0): ?>
+                        <div style="max-height: 500px; overflow-y: auto; padding-right: 10px;">
+                            <?php foreach ($candidaturas as $candidatura): ?>
+                                <div class="candidatura-item">
+                                    <h3><?php echo htmlspecialchars($candidatura['vaga_titulo']); ?></h3>
+                                    
+                                    <p>
+                                        <strong>Empresa:</strong> <?php echo htmlspecialchars($candidatura['empresa']); ?>
+                                    </p>
+                                    
+                                    <p>
+                                        <strong>Data da candidatura:</strong>
+                                        <?php 
+                                        $data = new DateTime($candidatura['data_candidatura']);
+                                        echo $data->format('d/m/Y H:i'); 
+                                        ?>
+                                    </p>
+                                    
+                                    <p>
+                                        <strong>Status:</strong>
+                                        <?php 
+                                        $status = $candidatura['status'] ?? 'Em análise';
+                                        $badge_class = '';
+                                        
+                                        switch ($status) {
+                                            case 'Aprovado':
+                                            case 'Aprovada':
+                                                $badge_class = 'badge-success';
+                                                break;
+                                            case 'Rejeitado':
+                                            case 'Rejeitada':
+                                                $badge_class = 'badge-danger';
+                                                break;
+                                            default:
+                                                $badge_class = 'badge-warning';
+                                        }
+                                        ?>
+                                        <span class="badge <?php echo $badge_class; ?>">
+                                            <?php echo htmlspecialchars($status); ?>
+                                        </span>
+                                    </p>
+                                    <a href="ver_vaga.php?id=<?php echo $candidatura['vaga_id']; ?>" class="btn btn-outline btn-sm">
+                                        <i class="fas fa-eye"></i> Ver Vaga
+                                    </a>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="empty-state">
+                            <i class="fas fa-search"></i>
+                            <p>Você ainda não se candidatou para nenhuma vaga.</p>
+                            <a href="listar_vagas.php" class="btn btn-primary">
+                                <i class="fas fa-briefcase"></i> Explorar Vagas
+                            </a>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
-    
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
     <script>
+        // Efeito de fade-in para os elementos
         document.addEventListener('DOMContentLoaded', function() {
-            // Animação de entrada para os elementos com classe fade-in
             const fadeElements = document.querySelectorAll('.fade-in');
             fadeElements.forEach((element, index) => {
                 setTimeout(() => {
@@ -735,26 +896,6 @@ try {
                     element.style.transform = 'translateY(0)';
                 }, 100 * index);
             });
-            
-            // Dropdown do usuário
-            const userDropdown = document.getElementById('user-dropdown');
-            const userMenu = document.getElementById('user-menu');
-            
-            if (userDropdown && userMenu) {
-                userDropdown.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    userMenu.classList.toggle('visible');
-                });
-                
-                // Fechar dropdown ao clicar fora
-                document.addEventListener('click', function(e) {
-                    if (userMenu.classList.contains('visible') && 
-                        !userDropdown.contains(e.target) && 
-                        !userMenu.contains(e.target)) {
-                        userMenu.classList.remove('visible');
-                    }
-                });
-            }
         });
     </script>
 </body>

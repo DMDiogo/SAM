@@ -1,3 +1,22 @@
+<?php
+session_start();
+require_once 'conexao.php';
+
+// Verifica se o usuário está logado como candidato
+if (!isset($_SESSION['candidato_id'])) {
+    // Redireciona para a página de login
+    header("Location: login.php");
+    exit();
+}
+
+$candidato_id = $_SESSION['candidato_id'];
+$stmt = $conn->prepare("SELECT * FROM candidatos WHERE id = ?");
+$stmt->bind_param("i", $candidato_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$candidato = $result->fetch_assoc();
+
+?>
 <!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -8,19 +27,211 @@
     <link rel="icon" type="" href="sam2-05.png">
     <link rel="stylesheet" href="../all.css/emprego.css/emp_search.css">
     <title>SAM Emprego</title>
+    <style>
+        :root {
+            --primary-color: #3EB489;
+            --primary-light: #4fc89a;
+            --primary-dark: #339873;
+            --secondary-color:rgb(84, 115, 146);
+            --light-gray: #f5f7fa;
+            --medium-gray: #e9ecef;
+            --dark-gray: #6c757d;
+            --box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+            --transition: all 0.3s ease;
+            --border-radius: 12px;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            margin: 0;
+            padding: 0;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: white;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            width: 100%;
+            box-shadow: none;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            height: 80px;
+        }
+
+        .logo img {
+            height: 80px;
+        }
+
+        .nav-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav-menu a {
+            color: var(--secondary-color);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 15px;
+            border-radius: 50px;
+            transition: var(--transition);
+        }
+
+        .nav-menu a:hover {
+            background-color: var(--light-gray);
+            color: var(--primary-color);
+        }
+
+        .nav-menu a.active {
+            color: var(--primary-color);
+            position: relative;
+        }
+
+        .nav-menu a.active::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 3px;
+            background-color: var(--primary-color);
+            border-radius: 10px;
+        }
+
+        /* Estilos para a seção de usuário */
+        .user-section {
+            display: flex;
+            align-items: center;
+        }
+
+        .user-dropdown {
+            display: flex;
+            width: 220px;
+            height: 32px;
+            align-items: center;
+            background-color: #3EB489;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 25px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        .user-avatar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #f5f5f5;
+            margin-right: 10px;
+            gap: 10px;
+            color: #000;
+            border: #3EB489 solid 1px;
+        }
+
+        .settings-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: #f5f5f5;
+            border: 2px solid #3EB489;
+            color: #3EB489;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        /* Container principal com largura máxima */
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .search-container {
+            max-width: 1200px;
+            margin: 20px auto;
+            background-color: var(white);
+            border-radius: 15px;
+            overflow: hidden;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .search-container.collapsed {
+            max-height: 80px;
+        }
+
+        .search-box {
+            max-width: 1200px;
+            margin: 20px auto;
+            display: flex;
+            gap: 10px;
+            background-color: white;
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: var(--box-shadow);
+        }
+
+        .job-listings {
+            max-width: 1200px;
+            margin: 20px auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Restante dos estilos CSS para search-box, job-listings, etc. mantidos conforme original */
+    </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
+    <header class="header">
+        <div class="header-content">
             <div class="logo">
                 <img src="../fotos/sam30-13.png" alt="SAM Emprego Logo">
+            </div>
+            <div class="nav-container">
+                <nav class="nav-menu">
+                    <a href="job_search_page.php" class="active">Vagas</a>
+                    <a href="curriculums.php">Meu Currículo</a>
+                    <a href="minhas_candidaturas.php">Candidaturas</a>
+                    <a href="painel_candidato.php">Perfil</a>
+                </nav>
             </div>
             <div class="user-section">
                 <div class="user-dropdown">
                     <div class="user-avatar">
                         <img src="../icones/icons-sam-19.svg" alt="" width="40">
                     </div>
-                    <span>Josilde da Co...</span>
+                    <span><?php echo htmlspecialchars($candidato['nome'] ?? 'Candidato'); ?></span>
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
                 </div>
                 <div class="settings-icon">
@@ -31,7 +242,9 @@
                 </div>
             </div>
         </div>
-        
+    </header>
+    
+    <div class="main-container">
         <div class="search-container collapsed" id="search-container">
             <div class="search-header" id="filter-toggle">
                 <div class="closed-content">

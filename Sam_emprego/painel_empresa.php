@@ -37,15 +37,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel da Empresa</title>
+    <link rel="stylesheet" href="../all.css/emprego.css/emp_search.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../all.css/login.css">
-    <link rel="stylesheet" href="../all.css/emprego.css/emp_search.css">
+
     <style>
         :root {
             --primary-color: #3EB489;
             --primary-light: #e6f7f1;
-            --primary-dark: #2d8a69;
             --secondary-color: #4361ee;
             --text-color: #333;
             --light-text: #666;
@@ -56,86 +55,95 @@
             --gray-bg: #f5f7fa;
             --card-shadow: 0 4px 12px rgba(0,0,0,0.08);
             --transition: all 0.3s ease;
+            --primary-light: #4fc89a;
+            --primary-dark: #339873;
+            --secondary-color:rgb(84, 115, 146);
+            --light-gray: #f5f7fa;
+            --medium-gray: #e9ecef;
+            --dark-gray: #6c757d;
+            --box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+            --border-radius: 12px;
         }
 
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: var(--gray-bg);
-            margin: 0;
-            padding: 0;
-            color: var(--text-color);
-            line-height: 1.6;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 20px auto;
-            padding: 20px;
-        }
-        
-        /* Header - Mantido intacto conforme solicitado */
         .header {
-            padding: 10px 0;
-            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: white;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            width: 100%;
+            box-shadow: none;
         }
-        
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            height: 80px;
+        }
+
         .logo img {
             height: 80px;
         }
-        
-        .publish-job-button {
-            background-color: #3EB489;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 45px;
+
+        .nav-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav-menu a {
+            color: var(--secondary-color);
             text-decoration: none;
-            margin-right: 10px;
             font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            height:33px;
+            padding: 8px 15px;
+            border-radius: 50px;
+            transition: var(--transition);
         }
-        
-        .publish-job-button i {
-            margin-right: 6px;
+
+        .nav-menu a:hover {
+            background-color: var(--light-gray);
+            color: var(--primary-color);
         }
-        
-        .user-menu {
+
+        .nav-menu a.active {
+            color: var(--primary-color);
+            position: relative;
+        }
+
+        .nav-menu a.active::after {
+            content: '';
             position: absolute;
-            top: 60px;
-            right: 50px;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            z-index: 100;
-            display: none;
-            width: 200px;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 3px;
+            background-color: var(--primary-color);
+            border-radius: 10px;
         }
-        
-        .user-menu.visible {
-            display: block;
+
+
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
         }
-        
-        .user-menu-item {
-            padding: 12px 16px;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .user-menu-item:last-child {
-            border-bottom: none;
-        }
-        
-        .user-menu-item a {
-            color: #333;
-            text-decoration: none;
-            display: block;
-        }
-        
-        .user-menu-item:hover {
-            background-color: #f5f5f5;
-        }
-        
-        /* Novos estilos abaixo - Seção de boas-vindas melhorada */
+        /* Seção de boas-vindas melhorada */
         .welcome-section {
             background-color: white;
             border-radius: 12px;
@@ -549,30 +557,44 @@
             .welcome-section h1 {
                 font-size: 1.5rem;
             }
+
+            .nav-menu {
+                gap: 10px;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .nav-menu a {
+                padding: 6px 10px;
+                font-size: 0.9rem;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Header mantido intacto conforme solicitado -->
-        <div class="header">
+<header class="header">
+        <div class="header-content">
             <div class="logo">
-                <img src="../fotos/sam30-13.png" alt="SAM Logo">
+                <img src="../fotos/sam30-13.png" alt="SAM Emprego Logo">
             </div>
-            
+            <div class="nav-container">
+                <nav class="nav-menu">
+                <nav class="nav-menu">
+                    <a href="job_search_page_emp.php">Vagas</a>
+                    <a href="painel_empresa.php" class="active">Minhas Vagas</a>
+                    <a href="candidaturas_recebidas.php">Candidaturas</a>
+                    <a href="perfil_empresa.php">Perfil</a>
+                </nav>
+                </nav>
+            </div>
             <div class="user-section">
-                <a href="job_register_page.html" class="publish-job-button">
-                    <i class="fas fa-plus-circle"></i> Publicar Vaga
-                </a>
-                
-                <div class="user-dropdown" id="user-dropdown">
+                <div class="user-dropdown">
                     <div class="user-avatar">
                         <img src="../icones/icons-sam-19.svg" alt="" width="40">
                     </div>
                     <span><?php echo htmlspecialchars($empresa['nome'] ?? $_SESSION['empresa_nome']); ?></span>
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
                 </div>
-                
                 <div class="settings-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3EB489" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3"></circle>
@@ -580,20 +602,10 @@
                     </svg>
                 </div>
             </div>
-            
-            <div class="user-menu" id="user-menu">
-                <div class="user-menu-item">
-                    <a href="job_register_page.html">Publicar Vaga</a>
-                </div>
-                <div class="user-menu-item">
-                    <a href="painel_empresa.php">Meu Painel</a>
-                </div>
-                <div class="user-menu-item">
-                    <a href="logout.php">Sair</a>
-                </div>
-            </div>
         </div>
+    </header>
 
+    <div class="container">
         <!-- Seção de boas-vindas melhorada -->
         <div class="welcome-section">
             <h1>Bem-vindo(a) ao seu painel, <?php echo htmlspecialchars($empresa['nome'] ?? $_SESSION['empresa_nome']); ?>!</h1>
@@ -631,7 +643,7 @@
         <div class="jobs-section">
             <div class="section-header">
                 <h2>Suas Vagas</h2>
-                <a href="job_register_page.html" class="action-btn">
+                <a href="registro_vagas.php" class="action-btn">
                     <i class="fas fa-plus"></i> Nova Vaga
                 </a>
             </div>
@@ -675,7 +687,7 @@
                     <h3>Nenhuma vaga publicada ainda</h3>
                     <p>Você ainda não possui vagas cadastradas.</p>
                     <p>Comece agora mesmo a encontrar os melhores profissionais para sua empresa!</p>
-                    <a href="job_register_page.html" class="action-btn">
+                    <a href="cadastrar_vaga.php" class="action-btn">
                         <i class="fas fa-plus"></i> Publicar Primeira Vaga
                     </a>
                 </div>

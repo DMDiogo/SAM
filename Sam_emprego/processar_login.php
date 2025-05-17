@@ -1,96 +1,81 @@
 <?php
 session_start();
-require_once 'config/database.php';
+require_once 'conexao.php';
 
-// Verifica se o formulário foi enviado via POST
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Coleta os dados do formulário
+// Verifica se o formulário foi enviado
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // Recupera os dados do formulário
     $email = trim($_POST['email'] ?? '');
     $senha = $_POST['senha'] ?? '';
-    $tipo_usuario = $_POST['tipo_usuario'] ?? 'empresa';
+    $tipo_usuario = $_POST['tipo_usuario'] ?? '';
     
-    // Validação básica
-    if (empty($email) || empty($senha)) {
-        $_SESSION['erro_login'] = "Por favor, preencha todos os campos.";
+    // Validações básicas
+    if (empty($email) || empty($senha) || empty($tipo_usuario)) {
+        $_SESSION['erro_login'] = "Todos os campos são obrigatórios.";
         header('Location: login.php');
         exit;
     }
     
-    try {
-        if ($tipo_usuario === 'empresa') {
-            // Login como empresa
-            $stmt = $pdo->prepare("SELECT * FROM empresas_recrutamento WHERE email = ?");
-            $stmt->execute([$email]);
-            $usuario = $stmt->fetch();
+    // Verifica o tipo de usuário e realiza a autenticação
+    if ($tipo_usuario == 'candidato') {
+        $stmt = $conn->prepare("SELECT id, email, senha, perfil_completo FROM candidatos WHERE email = ?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result->num_rows === 1) {
+            $candidato = $result->fetch_assoc();
             
-            if ($usuario && password_verify($senha, $usuario['senha'])) {
-                // Login bem-sucedido
-                $_SESSION['empresa_id'] = $usuario['id'];
-                $_SESSION['empresa_nome'] = $usuario['nome'];
-                $_SESSION['tipo_usuario'] = 'empresa';
+            if (password_verify($senha, $candidato['senha'])) {
+                // Login bem-sucedido, salva informações na sessão
+                $_SESSION['candidato_id'] = $candidato['id'];
+                $_SESSION['candidato_email'] = $candidato['email'];
+                
+                // Verifica se o perfil está completo
+                if ($candidato['perfil_completo'] == 0) {
+                    // Perfil incompleto, redireciona para a página de registro completo
+                    header('Location: job_register_page.php?id=' . $candidato['id']);
+                } else {
+                    // Perfil completo, redireciona para o painel do candidato
+                    header('Location: painel_candidato.php');
+                }
+                exit;
+            }
+        }
+        
+        // Login inválido
+        $_SESSION['erro_login'] = "Email ou senha incorretos.";
+        header('Location: login.php');
+        exit;
+        
+    } elseif ($tipo_usuario == 'empresa') {
+        $stmt = $conn->prepare("SELECT id, email, senha FROM empresas_recrutamento WHERE email = ?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result->num_rows === 1) {
+            $empresa = $result->fetch_assoc();
+            
+            if (password_verify($senha, $empresa['senha'])) {
+                // Login bem-sucedido, salva informações na sessão
+                $_SESSION['empresa_id'] = $empresa['id'];
+                $_SESSION['empresa_email'] = $empresa['email'];
                 
                 // Redireciona para o painel da empresa
                 header('Location: painel_empresa.php');
                 exit;
-            } else {
-                // Login inválido
-                $_SESSION['erro_login'] = "Email ou senha incorretos.";
-                header('Location: login.php');
-                exit;
-            }
-        } else {
-            // Login como candidato
-            $stmt = $pdo->prepare("SELECT * FROM candidatos WHERE email = ?");
-            $stmt->execute([$email]);
-            $usuario = $stmt->fetch();
-            
-            if ($usuario && password_verify($senha, $usuario['senha'])) {
-                // Login bem-sucedido
-                $_SESSION['candidato_id'] = $usuario['id'];
-                $_SESSION['candidato_nome'] = $usuario['nome'];
-                $_SESSION['tipo_usuario'] = 'candidato';
-                
-                // Cria um painel de candidato temporário se não existir
-                if (!file_exists('painel_candidato.php')) {
-                    file_put_contents('painel_candidato.php', '<?php
-                    session_start();
-                    if (!isset($_SESSION["candidato_id"])) {
-                        header("Location: login.php");
-                        exit;
-                    }
-                    ?>
-                    <!DOCTYPE html>
-                    <html lang="pt-BR">
-                    <head>
-                        <meta charset="UTF-8">
-                        <title>Painel do Candidato</title>
-                        <link rel="stylesheet" href="../all.css/login.css">
-                    </head>
-                    <body>
-                        <h1>Bem-vindo, <?php echo htmlspecialchars($_SESSION["candidato_nome"]); ?>!</h1>
-                        <p>Painel temporário - Esta página está em construção.</p>
-                        <a href="logout.php">Sair</a>
-                    </body>
-                    </html>');
-                }
-                
-                // Redireciona para o painel do candidato
-                header('Location: painel_candidato.php');
-                exit;
-            } else {
-                // Login inválido
-                $_SESSION['erro_login'] = "Email ou senha incorretos.";
-                header('Location: login.php');
-                exit;
             }
         }
-    } catch (PDOException $e) {
-        $_SESSION['erro_login'] = "Erro ao fazer login: " . $e->getMessage();
+        
+        // Login inválido
+        $_SESSION['erro_login'] = "Email ou senha incorretos.";
         header('Location: login.php');
         exit;
     }
+} else {
+    // Se alguém tentar acessar este arquivo diretamente, redireciona para a página de login
+    header('Location: login.php');
+    exit;
 }
-
-// Se o método não for POST, redireciona para a página de login
-header('Location: login.php');
-exit; 
+?> 
