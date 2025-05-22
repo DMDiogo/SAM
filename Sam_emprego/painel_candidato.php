@@ -88,16 +88,17 @@ if (!empty($candidato['curriculo_path'] ?? $candidato['cv_anexo'] ?? '')) $progr
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="" href="sam2-05.png">
+    <link rel="stylesheet" href="../all.css/emprego.css/emp_header.css">
     <link rel="stylesheet" href="../all.css/emprego.css/emp_search.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&display=swap" rel="stylesheet">
     <title>SAM - Painel do Candidato</title>
     <style>
         :root {
             --primary-color: #3EB489;
             --primary-light: #4fc89a;
             --primary-dark: #339873;
-            --secondary-color:rgb(84, 115, 146);
+            --secondary-color: rgb(84, 115, 146);
             --light-gray: #f5f7fa;
             --medium-gray: #e9ecef;
             --dark-gray: #6c757d;
@@ -187,6 +188,27 @@ if (!empty($candidato['curriculo_path'] ?? $candidato['cv_anexo'] ?? '')) $progr
             border-radius: 10px;
         }
 
+        /* Estilos para a seção de usuário */
+        .user-section {
+            display: flex;
+            align-items: center;
+        }
+
+
+
+        .settings-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: #f5f5f5;
+            border: 2px solid #3EB489;
+            color: #3EB489;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+        }
 
         .container {
             max-width: 1200px;
@@ -258,12 +280,6 @@ if (!empty($candidato['curriculo_path'] ?? $candidato['cv_anexo'] ?? '')) $progr
             gap: 24px;
         }
 
-        @media (max-width: 992px) {
-            .content-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
         /* Cards */
         .panel-section {
             background: white;
@@ -302,7 +318,7 @@ if (!empty($candidato['curriculo_path'] ?? $candidato['cv_anexo'] ?? '')) $progr
             gap: 15px;
             margin-bottom: 25px;
         }
-        
+       
         .stat-card {
             background: linear-gradient(45deg, var(--primary-color), var(--primary-light));
             color: white;
@@ -578,6 +594,36 @@ if (!empty($candidato['curriculo_path'] ?? $candidato['cv_anexo'] ?? '')) $progr
             transform: translateY(-2px);
         }
 
+        /* Dropdown styles */
+        .dropdown-item {
+            // ...existing code...
+        }
+
+        /* Add this new style for Font Awesome icons */
+        .fas, .far, .fa, .svg-inline--fa {
+            color: var(--primary-color) !important;
+            fill: var(--primary-color) !important;
+        }
+        
+        /* E mantenha as exceções */
+        .stat-card i,
+        .stat-card .svg-inline--fa,
+        .cv-icon i,
+        .cv-icon .svg-inline--fa,
+        .btn i,
+        .btn .svg-inline--fa,
+        .settings-icon i,
+        .settings-icon .svg-inline--fa,
+        .dropdown-arrow {  /* Added this exception */
+            color: inherit !important;
+            fill: inherit !important;
+        }
+
+        /* Add specific style for dropdown arrow */
+        .dropdown-arrow {
+            color: white !important;
+        }
+
         /* Animations */
         .fade-in {
             animation: fadeIn 0.5s ease-in-out;
@@ -589,12 +635,14 @@ if (!empty($candidato['curriculo_path'] ?? $candidato['cv_anexo'] ?? '')) $progr
         }
         
         /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .profile-grid {
+        @media (max-width: 992px) {
+            .content-grid {
                 grid-template-columns: 1fr;
             }
-            
-            .content-grid {
+        }
+        
+        @media (max-width: 768px) {
+            .profile-grid {
                 grid-template-columns: 1fr;
             }
             
@@ -615,17 +663,35 @@ if (!empty($candidato['curriculo_path'] ?? $candidato['cv_anexo'] ?? '')) $progr
                     <a href="job_search_page.php">Vagas</a>
                     <a href="curriculums.php">Meu Currículo</a>
                     <a href="minhas_candidaturas.php">Candidaturas</a>
-                    <a href="painel_candidato.php" class="active">Perfil</a>
+                    <a href="painel_candidato.php"class="active">Perfil</a>
                 </nav>
             </div>
             <div class="user-section">
-                <div class="user-dropdown">
+                <div class="user-dropdown" id="userDropdownToggle">
                     <div class="user-avatar">
                         <img src="../icones/icons-sam-19.svg" alt="" width="40">
                     </div>
                     <span><?php echo htmlspecialchars($candidato['nome'] ?? 'Candidato'); ?></span>
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
+                    
+                    <!-- Dropdown Menu -->
+                    <div class="dropdown-menu" id="userDropdownMenu">
+                        <a href="painel_candidato.php" class="dropdown-item">
+                            <i class="fas fa-user"></i class="dropdown-item-1">
+                            Meu Perfil
+                        </a>
+                        <a href="editar_perfil.php" class="dropdown-item">
+                            <i class="fas fa-cog"></i class="dropdown-item-1">
+                            Configurações
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="logout.php" class="dropdown-item">
+                            <i class="fas fa-sign-out-alt"></i class="dropdown-item-1">
+                            Logout
+                        </a>
+                    </div>
                 </div>
+                
                 <div class="settings-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3EB489" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3"></circle>
@@ -898,5 +964,6 @@ if (!empty($candidato['curriculo_path'] ?? $candidato['cv_anexo'] ?? '')) $progr
             });
         });
     </script>
+    <script src="../js/dropdown.js"></script>
 </body>
 </html>

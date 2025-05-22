@@ -25,6 +25,7 @@ $candidato = $result->fetch_assoc();
     <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="" href="sam2-05.png">
+    <link rel="stylesheet" href="../all.css/emprego.css/emp_header.css">
     <link rel="stylesheet" href="../all.css/emprego.css/emp_search.css">
     <title>SAM Emprego</title>
     <style>
@@ -128,19 +129,6 @@ $candidato = $result->fetch_assoc();
             align-items: center;
         }
 
-        .user-dropdown {
-            display: flex;
-            width: 220px;
-            height: 32px;
-            align-items: center;
-            background-color: #3EB489;
-            color: white;
-            padding: 8px 15px;
-            border-radius: 25px;
-            margin-right: 10px;
-            cursor: pointer;
-        }
-
         .user-avatar {
             display: flex;
             align-items: center;
@@ -227,13 +215,31 @@ $candidato = $result->fetch_assoc();
                 </nav>
             </div>
             <div class="user-section">
-                <div class="user-dropdown">
+                <div class="user-dropdown" id="userDropdownToggle">
                     <div class="user-avatar">
                         <img src="../icones/icons-sam-19.svg" alt="" width="40">
                     </div>
                     <span><?php echo htmlspecialchars($candidato['nome'] ?? 'Candidato'); ?></span>
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
+                    
+                    <!-- Dropdown Menu -->
+                    <div class="dropdown-menu" id="userDropdownMenu">
+                        <a href="painel_candidato.php" class="dropdown-item">
+                            <i class="fas fa-user"></i>
+                            Meu Perfil
+                        </a>
+                        <a href="editar_perfil.php" class="dropdown-item">
+                            <i class="fas fa-cog"></i>
+                            Configurações
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="logout.php" class="dropdown-item">
+                            <i class="fas fa-sign-out-alt"></i>
+                            Logout
+                        </a>
+                    </div>
                 </div>
+                
                 <div class="settings-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3EB489" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3"></circle>
@@ -429,5 +435,6 @@ $candidato = $result->fetch_assoc();
             filterToggle.addEventListener('click', toggleDropdown);
         });
     </script>
+    <script src="../js/dropdown.js"></script>
 </body>
 </html>

@@ -40,6 +40,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="" href="sam2-05.png">
     <link rel="stylesheet" href="../all.css/emprego.css/emp_search.css">
+    <link rel="stylesheet" href="../all.css/emprego.css/emp_header.css">
     <title>SAM Emprego</title>
     <style>
         :root {
@@ -227,29 +228,45 @@
     </style>
 </head>
 <body>
-    <header class="header">
+<header class="header">
         <div class="header-content">
             <div class="logo">
                 <img src="../fotos/sam30-13.png" alt="SAM Emprego Logo">
             </div>
             <div class="nav-container">
                 <nav class="nav-menu">
-                <nav class="nav-menu">
-                    <a href="job_search_page_emp.php" class="active">Vagas</a>
-                    <a href="painel_empresa.php" >Minhas Vagas</a>
-                    <a href="candidaturas_recebidas.php">Candidaturas</a>
-                    <a href="perfil_empresa.php">Perfil</a>
-                </nav>
+                    <a href="job_search_page.php" class="active">Vagas</a>
+                    <a href="curriculums.php">Meu Currículo</a>
+                    <a href="minhas_candidaturas.php">Candidaturas</a>
+                    <a href="painel_candidato.php">Perfil</a>
                 </nav>
             </div>
             <div class="user-section">
-                <div class="user-dropdown">
+                <div class="user-dropdown" id="userDropdownToggle">
                     <div class="user-avatar">
                         <img src="../icones/icons-sam-19.svg" alt="" width="40">
                     </div>
                     <span><?php echo htmlspecialchars($empresa['nome'] ?? $_SESSION['empresa_nome']); ?></span>
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
+                    
+                    <!-- Dropdown Menu -->
+                    <div class="dropdown-menu" id="userDropdownMenu">
+                        <a href="painel_candidato.php" class="dropdown-item">
+                            <i class="fas fa-user"></i>
+                            Meu Perfil
+                        </a>
+                        <a href="editar_perfil.php" class="dropdown-item">
+                            <i class="fas fa-cog"></i>
+                            Configurações
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="logout.php" class="dropdown-item">
+                            <i class="fas fa-sign-out-alt"></i>
+                            Logout
+                        </a>
+                    </div>
                 </div>
+                
                 <div class="settings-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3EB489" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3"></circle>
@@ -364,53 +381,89 @@
         </div>
 
         <div class="job-listings">
-            <!-- Job Card 1 -->
-            <div class="job-card">
-                <div class="job-header">Cantinas Jorge & Filhos</div>
-                <div class="job-content">
-                    <div class="job-logo">
-                        <img src="../fotos/func_67bf0c0c6aaac.jpg" alt="Cantinas Jorge & Filhos Logo">
-                    </div>
-                    <div class="job-details">
-                        <div class="job-title">Caixa de cantina</div>
-                        <div class="job-company">Cantinas Jorge & Filhos</div>
-                        <div class="job-info">
-                            <div class="job-category"><span class="icon icon-category"></span>Comercial, Vendas</div>
-                            <div class="job-location"><span class="icon icon-location"></span>Trabalho presencial (Luanda, Angola)</div>
-                            <div class="job-salary"><span class="icon icon-salary"></span>70.000,00 AOA / Mês</div>
-                            <div class="job-type"><span class="icon icon-time"></span>Temporário</div>
+            <?php
+            if (isset($vagas) && !empty($vagas)) {
+                foreach ($vagas as $vaga) {
+                    // Format salary range
+                    $salario = '';
+                    if ($vaga['salario_min'] && $vaga['salario_max']) {
+                        $salario = number_format($vaga['salario_min'], 2, ',', '.') . ' - ' . 
+                                 number_format($vaga['salario_max'], 2, ',', '.') . ' AOA / Mês';
+                    } elseif ($vaga['salario_min']) {
+                        $salario = number_format($vaga['salario_min'], 2, ',', '.') . ' AOA / Mês';
+                    } elseif ($vaga['salario_max']) {
+                        $salario = number_format($vaga['salario_max'], 2, ',', '.') . ' AOA / Mês';
+                    }
+
+                    // Determine status class
+                    $statusClass = '';
+                    $statusText = '';
+                    switch ($vaga['status']) {
+                        case 'Aberta':
+                            $statusClass = 'status-open';
+                            $statusText = 'A contratar';
+                            break;
+                        case 'Fechada':
+                            $statusClass = 'status-closed';
+                            $statusText = 'Vaga Fechada';
+                            break;
+                        case 'Pausada':
+                            $statusClass = 'status-suspended';
+                            $statusText = 'Vaga Pausada';
+                            break;
+                    }
+            ?>
+                <div class="job-card">
+                    <div class="job-header"><?php echo htmlspecialchars($empresa['nome']); ?></div>
+                    <div class="job-content">
+                        <div class="job-logo">
+                            <img src="../fotos/sam30-13.png" alt="<?php echo htmlspecialchars($empresa['nome']); ?> Logo">
+                        </div>
+                        <div class="job-details">
+                            <div class="job-title"><?php echo htmlspecialchars($vaga['titulo']); ?></div>
+                            <div class="job-company"><?php echo htmlspecialchars($empresa['nome']); ?></div>
+                            <div class="job-info">
+                                <?php if ($vaga['departamento']): ?>
+                                <div class="job-category">
+                                    <span class="icon icon-category"></span>
+                                    <?php echo htmlspecialchars($vaga['departamento']); ?>
+                                </div>
+                                <?php endif; ?>
+                                
+                                <?php if ($vaga['localizacao']): ?>
+                                <div class="job-location">
+                                    <span class="icon icon-location"></span>
+                                    <?php echo htmlspecialchars($vaga['localizacao']); ?>
+                                </div>
+                                <?php endif; ?>
+                                
+                                <?php if ($salario): ?>
+                                <div class="job-salary">
+                                    <span class="icon icon-salary"></span>
+                                    <?php echo htmlspecialchars($salario); ?>
+                                </div>
+                                <?php endif; ?>
+                                
+                                <?php if ($vaga['tipo_contrato']): ?>
+                                <div class="job-type">
+                                    <span class="icon icon-time"></span>
+                                    <?php echo htmlspecialchars($vaga['tipo_contrato']); ?>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="job-actions">
+                            <div class="job-status <?php echo $statusClass; ?>"><?php echo $statusText; ?></div>
+                            <div class="job-view">Visualizar detalhes</div>
                         </div>
                     </div>
-                    <div class="job-actions">
-                        <div class="job-status status-open">A contratar</div>
-                        <div class="job-view">Visualizar detalhes</div>
-                    </div>
                 </div>
-            </div>
-            
-            <!-- Job Card 2 -->
-            <div class="job-card">
-                <div class="job-header">Grupo Kurt</div>
-                <div class="job-content">
-                    <div class="job-logo">
-                        <img src="/api/placeholder/80/80" alt="Grupo Kurt Logo">
-                    </div>
-                    <div class="job-details">
-                        <div class="job-title">Assistente de Logística</div>
-                        <div class="job-company">Grupo Kurt</div>
-                        <div class="job-info">
-                            <div class="job-category"><span class="icon icon-category"></span>Logística e Distribuição</div>
-                            <div class="job-location"><span class="icon icon-location"></span>Trabalho Remoto</div>
-                            <div class="job-salary"><span class="icon icon-salary"></span>115.000,00 - 180.000,00 AOA / Mês</div>
-                            <div class="job-type"><span class="icon icon-time"></span>Efetivo</div>
-                        </div>
-                    </div>
-                    <div class="job-actions">
-                        <div class="job-status status-closed">Vaga Fechada</div>
-                        <div class="job-view">Visualizar detalhes</div>
-                    </div>
-                </div>
-            </div>
+            <?php
+                }
+            } else {
+                echo '<div class="no-jobs">Nenhuma vaga encontrada.</div>';
+            }
+            ?>
         </div>
     </div>
 
@@ -445,5 +498,6 @@
             filterToggle.addEventListener('click', toggleDropdown);
         });
     </script>
+    <script src="../js/dropdown.js"></script>
 </body>
 </html>
