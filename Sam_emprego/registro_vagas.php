@@ -671,20 +671,20 @@
             <label for="job_location" class="required-field">Localização do Trabalho</label>
             <select id="job_location" name="job_location" required>
               <option value="">Selecione uma opção</option>
-              <option value="remote">Remoto (Online)</option>
-              <option value="hybrid">Híbrido</option>
-              <option value="onsite">Presencial</option>
+              <option value="remoto">Remoto (Online)</option>
+              <option value="hibrido">Híbrido</option>
+              <option value="presencial">Presencial</option>
             </select>
           </div>
           <div class="form-column">
             <label for="job_type" class="required-field">Tipo de Contrato</label>
             <select id="job_type" name="job_type" required>
               <option value="">Selecione uma opção</option>
-              <option value="full_time">Efetivo</option>
-              <option value="part_time">Meio Período</option>
-              <option value="temporary">Temporário</option>
-              <option value="freelance">Freelance</option>
-              <option value="internship">Estágio</option>
+              <option value="efetivo">Efetivo</option>
+              <option value="meio_periodo">Meio Período</option>
+              <option value="temporario">Temporário</option>
+              <option value="freelancer">Freelancer</option>
+              <option value="estagio">Estágio</option>
             </select>
           </div>
         </div>
@@ -719,22 +719,23 @@
             <label for="payment_method" class="required-field">Método de Pagamento</label>
             <select id="payment_method" name="payment_method" required>
               <option value="">Selecione uma opção</option>
-              <option value="bank_transfer">Transferência Bancária</option>
-              <option value="check">Cheque</option>
-              <option value="cash">Dinheiro</option>
-              <option value="other">Outro</option>
+              <option value="transferencia">Transferência Bancária</option>
+              <option value="cheque">Cheque</option>
+              <option value="dinheiro">Dinheiro</option>
+              <option value="outro">Outro</option>
             </select>
           </div>
           <div class="form-column">
-            <label for="language" class="required-field">Língua</label>
+            <label for="language" class="required-field">Idioma Requerido</label>
             <select id="language" name="language" required>
               <option value="">Selecione uma opção</option>
-              <option value="portuguese">Português</option>
-              <option value="english">Inglês</option>
-              <option value="french">Francês</option>
-              <option value="spanish">Espanhol</option>
-              <option value="other">Outro</option>
+              <option value="portugues">Português</option>
+              <option value="portugues_ingles">Português e Inglês</option>
+              <option value="portugues_frances">Português e Francês</option>
+              <option value="portugues_espanhol">Português e Espanhol</option>
+              <option value="nao_especificado">Não Especificado</option>
             </select>
+            <p class="small-text">Idioma(s) necessário(s) para exercer a função</p>
           </div>
         </div>
       </div>
@@ -758,11 +759,11 @@
             <label for="workdays" class="required-field">Dias Úteis Semanais</label>
             <select id="workdays" name="workdays" required>
               <option value="">Selecione uma opção</option>
-              <option value="mon_fri">Segunda à Sexta</option>
-              <option value="mon_sat">Segunda à Sábado</option>
-              <option value="all_week">Todos os Dias</option>
-              <option value="weekend">Fins de Semana</option>
-              <option value="flexible">Flexível</option>
+              <option value="segunda_sexta">Segunda à Sexta</option>
+              <option value="segunda_sabado">Segunda à Sábado</option>
+              <option value="todos_dias">Todos os Dias</option>
+              <option value="fins_semana">Fins de Semana</option>
+              <option value="flexivel">Flexível</option>
             </select>
           </div>
         </div>
@@ -936,7 +937,8 @@
       
       // Form submission
       form.addEventListener('submit', function(event) {
-        event.preventDefault();
+        // Remover a prevenção padrão do formulário
+        // e.preventDefault(); -- Remover ou comentar esta linha
         
         // Check if form is valid
         if (form.checkValidity()) {

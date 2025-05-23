@@ -1,73 +1,13 @@
-<?php
-session_start();
-// Verifica se o usuário está logado
-if (!isset($_SESSION['user_id'])) {
-    // Redireciona para a página de login
-    header("Location: login.php");
-    exit();
-}
-?>
 <!DOCTYPE html>
 <html lang="pt">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="../all.css/emprego.css/emp_view.css">
-  <link rel="icon" type="" href="sam2-05.png">
   <title>SAM Emprego - Assistente de Logística</title>
 </head>
 <body>
   <div class="container">
-    <header class="header">
-        <div class="header-content">
-            <div class="logo">
-                <img src="../fotos/sam30-13.png" alt="SAM Emprego Logo">
-            </div>
-            <div class="nav-container">
-                <nav class="nav-menu">
-                    <a href="job_search_page.php">Vagas</a>
-                    <a href="curriculums.php">Meu Currículo</a>
-                    <a href="minhas_candidaturas.php">Candidaturas</a>
-                    <a href="painel_candidato.php" class="active">Perfil</a>
-                </nav>
-            </div>
-            <div class="user-section">
-                <div class="user-dropdown" id="userDropdownToggle">
-                    <div class="user-avatar">
-                        <img src="../icones/icons-sam-19.svg" alt="" width="40">
-                    </div>
-                    <span><?php echo htmlspecialchars($candidato['nome'] ?? 'Candidato'); ?></span>
-                    <i class="fas fa-chevron-down dropdown-arrow"></i>
-                    
-                    <!-- Dropdown Menu -->
-                    <div class="dropdown-menu" id="userDropdownMenu">
-                        <a href="painel_candidato.php" class="dropdown-item">
-                            <i class="fas fa-user"></i>
-                            Meu Perfil
-                        </a>
-                        <a href="editar_perfil.php" class="dropdown-item">
-                            <i class="fas fa-cog"></i>
-                            Configurações
-                        </a>
-                        <div class="dropdown-divider"></div>
-                        <a href="logout.php" class="dropdown-item">
-                            <i class="fas fa-sign-out-alt"></i>
-                            Logout
-                        </a>
-                    </div>
-                </div>
-                
-                <div class="settings-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3EB489" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                    </svg>
-                </div>
-            </div>
-        </div>
-    </header>
-  </div>
-    
     <div class="posting-container">
       <a href="job_search_page.php" class="back-link">← Voltar à lista de empregos</a>
       <div class="job-card">
@@ -138,4 +78,5 @@ if (!isset($_SESSION['user_id'])) {
     </div>
   </div>
 </body>
+<script src="../js/dropdown.js"></script>
 </html>

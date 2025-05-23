@@ -1,20 +1,21 @@
 <?php
 session_start();
-require_once 'conexao.php';
+require_once 'config/database.php'; // Alterado para usar o mesmo arquivo de conexão PDO
 
 // Verifica se o usuário está logado como candidato
 if (!isset($_SESSION['candidato_id'])) {
-    // Redireciona para a página de login
     header("Location: login.php");
     exit();
 }
 
-$candidato_id = $_SESSION['candidato_id'];
-$stmt = $conn->prepare("SELECT * FROM candidatos WHERE id = ?");
-$stmt->bind_param("i", $candidato_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$candidato = $result->fetch_assoc();
+// Buscar informações do candidato
+try {
+    $stmt = $pdo->prepare("SELECT * FROM candidatos WHERE id = ?");
+    $stmt->execute([$_SESSION['candidato_id']]);
+    $candidato = $stmt->fetch();
+} catch (PDOException $e) {
+    $erro = "Erro ao carregar dados: " . $e->getMessage();
+}
 
 ?>
 <!DOCTYPE html>
@@ -354,53 +355,110 @@ $candidato = $result->fetch_assoc();
         </div>
 
         <div class="job-listings">
-            <!-- Job Card 1 -->
-            <div class="job-card">
-                <div class="job-header">Cantinas Jorge & Filhos</div>
-                <div class="job-content">
-                    <div class="job-logo">
-                        <img src="../fotos/func_67bf0c0c6aaac.jpg" alt="Cantinas Jorge & Filhos Logo">
-                    </div>
-                    <div class="job-details">
-                        <div class="job-title">Caixa de cantina</div>
-                        <div class="job-company">Cantinas Jorge & Filhos</div>
-                        <div class="job-info">
-                            <div class="job-category"><span class="icon icon-category"></span>Comercial, Vendas</div>
-                            <div class="job-location"><span class="icon icon-location"></span>Trabalho presencial (Luanda, Angola)</div>
-                            <div class="job-salary"><span class="icon icon-salary"></span>70.000,00 AOA / Mês</div>
-                            <div class="job-type"><span class="icon icon-time"></span>Temporário</div>
+            <?php
+            try {
+                // Buscar todas as vagas ativas
+                $stmt = $pdo->prepare("
+                    SELECT v.*, e.nome as empresa_nome, e.logo as empresa_logo 
+                    FROM vagas v 
+                    JOIN empresas_recrutamento e ON v.empresa_id = e.id 
+                    WHERE v.status = 'Aberta' 
+                    ORDER BY v.data_publicacao DESC
+                ");
+                $stmt->execute();
+                $vagas = $stmt->fetchAll();
+
+                if (!empty($vagas)) {
+                    foreach ($vagas as $vaga) {
+                        // Formatar salário
+                        $salario = '';
+                        if ($vaga['salario_min'] && $vaga['salario_max']) {
+                            $salario = number_format($vaga['salario_min'], 2, ',', '.') . ' - ' . 
+                                     number_format($vaga['salario_max'], 2, ',', '.') . ' AOA / Mês';
+                        } elseif ($vaga['salario_min']) {
+                            $salario = number_format($vaga['salario_min'], 2, ',', '.') . ' AOA / Mês';
+                        } elseif ($vaga['salario_max']) {
+                            $salario = 'Até ' . number_format($vaga['salario_max'], 2, ',', '.') . ' AOA / Mês';
+                        }
+            ?>
+                <div class="job-card">
+                    <div class="job-header"><?php echo htmlspecialchars($vaga['empresa_nome']); ?></div>
+                    <div class="job-content">
+                        <div class="job-logo">
+                            <img src="<?php echo $vaga['empresa_logo'] ? htmlspecialchars($vaga['empresa_logo']) : '../fotos/sam30-13.png'; ?>" 
+                                 alt="<?php echo htmlspecialchars($vaga['empresa_nome']); ?> Logo">
+                        </div>
+                        <div class="job-details">
+                            <div class="job-title"><?php echo htmlspecialchars($vaga['titulo']); ?></div>
+                            <div class="job-company"><?php echo htmlspecialchars($vaga['empresa_nome']); ?></div>
+                            <div class="job-info">
+                                <?php if ($vaga['categoria']): ?>
+                                <div class="job-category">
+                                    <span class="icon icon-category"></span>
+                                    <?php echo htmlspecialchars($vaga['categoria']); ?>
+                                </div>
+                                <?php endif; ?>
+                                
+                                <?php if ($vaga['localizacao']): ?>
+                                    <div class="job-location">
+                                        <span class="icon icon-location"></span>
+                                        <?php 
+                                        $localizacoes = [
+                                            'remoto' => 'Remoto',
+                                            'hibrido' => 'Híbrido',
+                                            'presencial' => 'Presencial'
+                                        ];
+                                        echo htmlspecialchars($localizacoes[$vaga['localizacao']] ?? $vaga['localizacao']); 
+                                        ?>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <?php if ($salario): ?>
+                                <div class="job-salary">
+                                    <span class="icon icon-salary"></span>
+                                    <?php echo $salario; ?>
+                                </div>
+                                <?php endif; ?>
+                                
+                                <?php if ($vaga['tipo_contrato']): ?>
+                                    <div class="job-type">
+                                        <span class="icon icon-time"></span>
+                                        <?php 
+                                        $tipos_contrato = [
+                                            'efetivo' => 'Efetivo',
+                                            'meio_periodo' => 'Meio Período',
+                                            'temporario' => 'Temporário',
+                                            'freelancer' => 'Freelancer',
+                                            'estagio' => 'Estágio'
+                                        ];
+                                        echo htmlspecialchars($tipos_contrato[$vaga['tipo_contrato']] ?? $vaga['tipo_contrato']); 
+                                        ?>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if ($vaga['idioma']): ?>
+                                <div class="job-language">
+                                    <span class="icon icon-language"></span>
+                                    <?php echo htmlspecialchars($vaga['idioma']); ?>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="job-actions">
+                            <div class="job-status status-open">A contratar</div>
+                            <a href="detalhes_vaga.php" class="job-view">Visualizar detalhes</a>
                         </div>
                     </div>
-                    <div class="job-actions">
-                        <div class="job-status status-open">A contratar</div>
-                        <div class="job-view">Visualizar detalhes</div>
-                    </div>
                 </div>
-            </div>
-            
-            <!-- Job Card 2 -->
-            <div class="job-card">
-                <div class="job-header">Grupo Kurt</div>
-                <div class="job-content">
-                    <div class="job-logo">
-                        <img src="/api/placeholder/80/80" alt="Grupo Kurt Logo">
-                    </div>
-                    <div class="job-details">
-                        <div class="job-title">Assistente de Logística</div>
-                        <div class="job-company">Grupo Kurt</div>
-                        <div class="job-info">
-                            <div class="job-category"><span class="icon icon-category"></span>Logística e Distribuição</div>
-                            <div class="job-location"><span class="icon icon-location"></span>Trabalho Remoto</div>
-                            <div class="job-salary"><span class="icon icon-salary"></span>115.000,00 - 180.000,00 AOA / Mês</div>
-                            <div class="job-type"><span class="icon icon-time"></span>Efetivo</div>
-                        </div>
-                    </div>
-                    <div class="job-actions">
-                        <div class="job-status status-closed">Vaga Fechada</div>
-                        <div class="job-view">Visualizar detalhes</div>
-                    </div>
-                </div>
-            </div>
+            <?php
+                    }
+                } else {
+                    echo '<div class="no-jobs">Nenhuma vaga disponível no momento.</div>';
+                }
+            } catch (PDOException $e) {
+                echo '<div class="error">Erro ao carregar vagas: ' . htmlspecialchars($e->getMessage()) . '</div>';
+            }
+            ?>
         </div>
     </div>
 

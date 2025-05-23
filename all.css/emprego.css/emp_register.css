@@ -14,25 +14,7 @@
         margin: 0 auto;
         padding: 20px;
     }
-
-    .header{
-        display: flex;
-        align-items: center;
-        padding: 10px 0;
-        margin-bottom: 20px;
-    }
-
-    .logo {
-        display: flex;
-        align-items: center;
-        height: 80px;
-    }
-
-    .logo img {
-        height: 50px;
-        margin-right: 10px;
-    }
-
+    
     .welcome-text{
         text-align: center;
         font-size: 15px;

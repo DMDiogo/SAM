@@ -13,8 +13,14 @@
         $stmt->execute([$_SESSION['empresa_id']]);
         $empresa = $stmt->fetch();
         
-        // Buscar vagas da empresa
-        $stmt = $pdo->prepare("SELECT * FROM vagas WHERE empresa_id = ? ORDER BY data_publicacao DESC");
+        // Buscar vagas da empresa com mais detalhes
+        $stmt = $pdo->prepare("
+            SELECT v.*, e.nome as empresa_nome, e.logo as empresa_logo 
+            FROM vagas v 
+            JOIN empresas_recrutamento e ON v.empresa_id = e.id 
+            WHERE v.empresa_id = ? 
+            ORDER BY v.data_publicacao DESC
+        ");
         $stmt->execute([$_SESSION['empresa_id']]);
         $vagas = $stmt->fetchAll();
         
@@ -235,7 +241,7 @@
             </div>
             <div class="nav-container">
                 <nav class="nav-menu">
-                    <a href="job_search_page.php" class="active">Vagas</a>
+                    <a href="job_search_page_emp.php" class="active">Vagas</a>
                     <a href="curriculums.php">Meu Currículo</a>
                     <a href="minhas_candidaturas.php">Candidaturas</a>
                     <a href="painel_candidato.php">Perfil</a>
@@ -431,10 +437,17 @@
                                 <?php endif; ?>
                                 
                                 <?php if ($vaga['localizacao']): ?>
-                                <div class="job-location">
-                                    <span class="icon icon-location"></span>
-                                    <?php echo htmlspecialchars($vaga['localizacao']); ?>
-                                </div>
+                                    <div class="job-location">
+                                        <span class="icon icon-location"></span>
+                                        <?php 
+                                        $localizacoes = [
+                                            'remoto' => 'Remoto',
+                                            'hibrido' => 'Híbrido',
+                                            'presencial' => 'Presencial'
+                                        ];
+                                        echo htmlspecialchars($localizacoes[$vaga['localizacao']] ?? $vaga['localizacao']); 
+                                        ?>
+                                    </div>
                                 <?php endif; ?>
                                 
                                 <?php if ($salario): ?>
@@ -445,9 +458,25 @@
                                 <?php endif; ?>
                                 
                                 <?php if ($vaga['tipo_contrato']): ?>
-                                <div class="job-type">
-                                    <span class="icon icon-time"></span>
-                                    <?php echo htmlspecialchars($vaga['tipo_contrato']); ?>
+                                    <div class="job-type">
+                                        <span class="icon icon-time"></span>
+                                        <?php 
+                                        $tipos_contrato = [
+                                            'efetivo' => 'Efetivo',
+                                            'meio_periodo' => 'Meio Período',
+                                            'temporario' => 'Temporário',
+                                            'freelancer' => 'Freelancer',
+                                            'estagio' => 'Estágio'
+                                        ];
+                                        echo htmlspecialchars($tipos_contrato[$vaga['tipo_contrato']] ?? $vaga['tipo_contrato']); 
+                                        ?>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if ($vaga['idioma']): ?>
+                                <div class="job-language">
+                                    <span class="icon icon-language"></span>
+                                    <?php echo htmlspecialchars($vaga['idioma']); ?>
                                 </div>
                                 <?php endif; ?>
                             </div>
