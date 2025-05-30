@@ -22,6 +22,7 @@ use PHPMailer\PHPMailer\Exception;
 // Verifica se já está na etapa de verificação do código
 if (isset($_POST['codigo_verificacao'])) {
     $codigo_digitado = trim($_POST['codigo_verificacao']);
+    $lembrar_dispositivo = isset($_POST['lembrar_dispositivo']) ? true : false;
     
     // Debug: Verificar valores da sessão
     error_log("Debug - Código digitado: " . $codigo_digitado);
@@ -51,11 +52,30 @@ if (isset($_POST['codigo_verificacao'])) {
         // Registrar a sessão no banco de dados
         $session_id = session_id();
         $user_agent = $_SERVER['HTTP_USER_AGENT'];
-        $ip_address = $_SERVER['REMOTE_ADDR'];
         
-        $query = "INSERT INTO adm_sessions (session_id, adm_id, user_agent, ip_address) 
-                  VALUES (?, ?, ?, ?)
-                  ON DUPLICATE KEY UPDATE last_activity = CURRENT_TIMESTAMP";
+        // Função para obter o IP real
+        function getRealIP() {
+            if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+                return $_SERVER['HTTP_CLIENT_IP'];
+            } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+                return $_SERVER['HTTP_X_FORWARDED_FOR'];
+            } else {
+                return $_SERVER['REMOTE_ADDR'];
+            }
+        }
+        
+        $ip_address = getRealIP();
+        
+        // Primeiro, limpa sessões antigas (mais de 24 horas)
+        $sql_cleanup = "DELETE FROM adm_sessions WHERE adm_id = ? AND last_activity < DATE_SUB(NOW(), INTERVAL 24 HOUR)";
+        $stmt_cleanup = $mysqli->prepare($sql_cleanup);
+        $stmt_cleanup->bind_param("i", $_SESSION['id_adm']);
+        $stmt_cleanup->execute();
+        
+        // Atualiza ou insere a sessão atual
+        $query = "INSERT INTO adm_sessions (session_id, adm_id, user_agent, ip_address, last_activity) 
+                  VALUES (?, ?, ?, ?, NOW())
+                  ON DUPLICATE KEY UPDATE last_activity = NOW()";
         
         $stmt = $mysqli->prepare($query);
         $stmt->bind_param("siss", $session_id, $_SESSION['id_adm'], $user_agent, $ip_address);
@@ -79,6 +99,16 @@ if (isset($_POST['codigo_verificacao'])) {
         
         // Determina a URL de redirecionamento
         $redirect_url = (isset($_SESSION['id_empresa']) && $_SESSION['id_empresa']) ? 'UI.php' : 'Registro_emp.php';
+        
+        // Se marcou para lembrar o dispositivo, salva na tabela
+        if ($lembrar_dispositivo) {
+            $sql_salvar = "INSERT INTO dispositivos_confiaveis (adm_id, user_agent, ip_address) 
+                          VALUES (?, ?, ?)
+                          ON DUPLICATE KEY UPDATE ultimo_acesso = CURRENT_TIMESTAMP";
+            $stmt_salvar = $mysqli->prepare($sql_salvar);
+            $stmt_salvar->bind_param("iss", $_SESSION['id_adm'], $user_agent, $ip_address);
+            $stmt_salvar->execute();
+        }
         
         // Redireciona com JavaScript para evitar problemas de header already sent
         echo '<script type="text/javascript">';
@@ -113,22 +143,66 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !isset($_POST['codigo_verificacao'])
             $usuario = $result->fetch_assoc();
 
             if (password_verify($senha, $usuario['senha'])) {
-                // Gera um código de verificação aleatório
+                // Verifica se o dispositivo é confiável
+                $user_agent = $_SERVER['HTTP_USER_AGENT'];
+                $ip_address = $_SERVER['REMOTE_ADDR'];
+                
+                $sql_dispositivo = "SELECT id FROM dispositivos_confiaveis 
+                                  WHERE adm_id = ? AND user_agent = ? AND ip_address = ?";
+                $stmt_dispositivo = $mysqli->prepare($sql_dispositivo);
+                $stmt_dispositivo->bind_param("iss", $usuario['id_adm'], $user_agent, $ip_address);
+                $stmt_dispositivo->execute();
+                $result_dispositivo = $stmt_dispositivo->get_result();
+                
+                // Verifica se a autenticação de dois fatores está ativada
+                $sql_dois_fatores = "SELECT dois_fatores FROM configuracoes_seguranca WHERE adm_id = ?";
+                $stmt_dois_fatores = $mysqli->prepare($sql_dois_fatores);
+                $stmt_dois_fatores->bind_param("i", $usuario['id_adm']);
+                $stmt_dois_fatores->execute();
+                $result_dois_fatores = $stmt_dois_fatores->get_result();
+                $config_dois_fatores = $result_dois_fatores->fetch_assoc();
+                
+                $dois_fatores_ativado = $config_dois_fatores ? $config_dois_fatores['dois_fatores'] : false;
+                
+                if (!$dois_fatores_ativado) {
+                    // Se dois fatores estiver desativado, verifica se o dispositivo é confiável
+                    if ($result_dispositivo->num_rows > 0) {
+                        // Dispositivo confiável, faz login direto
+                        $_SESSION['id_adm'] = $usuario['id_adm'];
+                        $_SESSION['nome'] = $usuario['nome'];
+                        
+                        // Verifica se a empresa está definida
+                        $sql_empresa = "SELECT id_empresa FROM empresa WHERE adm_id = ?";
+                        $stmt_empresa = $mysqli->prepare($sql_empresa);
+                        $stmt_empresa->bind_param("i", $usuario['id_adm']);
+                        $stmt_empresa->execute();
+                        $result_empresa = $stmt_empresa->get_result();
+
+                        if ($result_empresa->num_rows > 0) {
+                            $empresa = $result_empresa->fetch_assoc();
+                            $_SESSION['id_empresa'] = $empresa['id_empresa'];
+                        }
+                        
+                        // Atualiza o último acesso do dispositivo
+                        $sql_update = "UPDATE dispositivos_confiaveis SET ultimo_acesso = CURRENT_TIMESTAMP 
+                                     WHERE adm_id = ? AND user_agent = ? AND ip_address = ?";
+                        $stmt_update = $mysqli->prepare($sql_update);
+                        $stmt_update->bind_param("iss", $usuario['id_adm'], $user_agent, $ip_address);
+                        $stmt_update->execute();
+                        
+                        // Redireciona para a página apropriada
+                        $redirect_url = (isset($_SESSION['id_empresa']) && $_SESSION['id_empresa']) ? 'UI.php' : 'Registro_emp.php';
+                        header("Location: $redirect_url");
+                        exit();
+                    }
+                }
+                
+                // Se chegou aqui, ou dois fatores está ativo ou o dispositivo não é confiável
+                // Prossegue com verificação de dois fatores
                 $codigo_verificacao = rand(100000, 999999);
-                
-                // Debug: Mostrar código gerado
-                error_log("Debug - Código gerado: " . $codigo_verificacao);
-                
-                // Armazena os dados temporariamente na sessão
                 $_SESSION['codigo_verificacao'] = $codigo_verificacao;
                 $_SESSION['id_temp'] = $usuario['id_adm'];
                 $_SESSION['nome_temp'] = $usuario['nome'];
-                
-                // Debug: Verificar valores armazenados na sessão
-                error_log("Debug - Valores armazenados na sessão:");
-                error_log("codigo_verificacao: " . $_SESSION['codigo_verificacao']);
-                error_log("id_temp: " . $_SESSION['id_temp']);
-                error_log("nome_temp: " . $_SESSION['nome_temp']);
                 
                 // Verifica se o administrador já cadastrou uma empresa
                 $sql_empresa = "SELECT id_empresa FROM empresa WHERE adm_id = ?";
@@ -388,6 +462,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !isset($_POST['codigo_verificacao'])
         text-decoration: underline;
     }
     
+    /* Estilo para o checkbox de lembrar dispositivo */
+    .remember-device {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 15px 0;
+        gap: 8px;
+    }
+
+    .remember-device input[type="checkbox"] {
+        margin: 0;
+        cursor: pointer;
+    }
+
+    .remember-device label {
+        cursor: pointer;
+        color: #666;
+        font-size: 14px;
+    }
+    
     /* Estilo para o formulário de verificação */
     .verification-card {
         display: <?php echo isset($mostrar_verificacao) ? 'block' : 'none'; ?>;
@@ -528,6 +622,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !isset($_POST['codigo_verificacao'])
                         pattern="\d{6}"
                         title="Por favor, insira exatamente 6 dígitos"
                     >
+                </div>
+                <div class="remember-device">
+                    <input type="checkbox" id="lembrar_dispositivo" name="lembrar_dispositivo">
+                    <label for="lembrar_dispositivo">Lembrar este dispositivo</label>
                 </div>
                 <button type="submit" class="btn-continuar">Verificar E-mail</button>
             </form>

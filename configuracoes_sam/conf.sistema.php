@@ -1,3 +1,13 @@
+<?php
+session_start();
+include('../conexao.php');
+
+// Verifica se o usuário está logado
+if (!isset($_SESSION['id_adm'])) {
+    header('Location: ../login.php');
+    exit();
+}
+?>
 <!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -212,17 +222,15 @@
                                 <strong>Selecionar Idioma</strong>
                                 <p>Escolha o idioma de preferência</p>
                             </div>
-                            <select class="select-input">
-                                <option>Português (Brasil)</option>
-                                <option>Inglês (EUA)</option>
-                                <option>Espanhol</option>
+                            <select class="select-input" id="idioma-selector">
+                                <option value="pt_BR" selected>Português (Pt)</option>
                             </select>
                         </div>
                     </div>
                 </div>
 
                 <div class="profile-actions">
-                    <button class="btn-primary">Salvar Alterações</button>
+                    <button class="btn-primary" id="salvar-config">Salvar Alterações</button>
                 </div>
             </div>
         </div>

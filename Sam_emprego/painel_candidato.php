@@ -44,7 +44,7 @@ if ($result->num_rows == 0) {
 }
 
 if ($tabelas_existem) {
-    $query = "SELECT c.*, v.titulo as vaga_titulo, v.empresa 
+    $query = "SELECT c.*, v.titulo as vaga_titulo, empresa_id
               FROM candidaturas c 
               JOIN vagas v ON c.vaga_id = v.id 
               WHERE c.candidato_id = ? 
