@@ -13,14 +13,15 @@
         $stmt->execute([$_SESSION['empresa_id']]);
         $empresa = $stmt->fetch();
         
-        // Modificar a query para buscar todas as vagas de todas as empresas
+        // Modificar a query para buscar apenas as vagas da empresa logada
         $stmt = $pdo->prepare("
             SELECT v.*, e.nome as empresa_nome, e.logo as empresa_logo 
             FROM vagas v 
             JOIN empresas_recrutamento e ON v.empresa_id = e.id 
+            WHERE v.empresa_id = ?
             ORDER BY v.data_publicacao DESC
         ");
-        $stmt->execute();
+        $stmt->execute([$_SESSION['empresa_id']]);
         $vagas = $stmt->fetchAll();
         
         // Contar candidaturas totais (exemplo)
@@ -47,6 +48,131 @@
     <link rel="stylesheet" href="../all.css/emprego.css/emp_vagas.css">
     <link rel="stylesheet" href="../all.css/emprego.css/emp_search.css">
     <link rel="stylesheet" href="../all.css/emprego.css/emp_header.css">
+    <style>
+        /* Estilização do cabeçalho da página */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin: 30px 0 40px 0;
+            padding: 0 20px;
+        }
+
+        .page-title-section {
+            flex: 1;
+        }
+
+        .page-title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin: 0 0 8px 0;
+            line-height: 1.2;
+        }
+
+        .page-subtitle {
+            font-size: 1.1rem;
+            color: #7f8c8d;
+            margin: 0;
+            font-weight: 400;
+        }
+
+        /* Estilização do botão Criar Nova Vaga */
+        .new-job-button {
+            background: linear-gradient(135deg, #3EB489 0%, #2ECC71 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            box-shadow: 0 3px 12px rgba(62, 180, 137, 0.25);
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .new-job-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .new-job-button:hover::before {
+            left: 100%;
+        }
+
+        .new-job-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(62, 180, 137, 0.35);
+            background: linear-gradient(135deg, #2ECC71 0%, #27AE60 100%);
+        }
+
+        .new-job-button:active {
+            transform: translateY(0);
+            box-shadow: 0 3px 12px rgba(62, 180, 137, 0.25);
+        }
+
+        .new-job-button i {
+            font-size: 0.9rem;
+            transition: transform 0.3s ease;
+        }
+
+        .new-job-button:hover i {
+            transform: rotate(90deg);
+        }
+
+        .new-job-button span {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .page-header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 20px;
+                margin: 20px 0 30px 0;
+                padding: 0 15px;
+            }
+
+            .page-title {
+                font-size: 1.8rem;
+            }
+
+            .page-subtitle {
+                font-size: 1rem;
+            }
+
+            .new-job-button {
+                align-self: flex-start;
+                padding: 9px 18px;
+                font-size: 0.85rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .page-title {
+                font-size: 1.6rem;
+            }
+
+            .new-job-button {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
     <title>SAM Emprego</title>
 </head>
 <body>
@@ -57,8 +183,8 @@
             </div>
             <div class="nav-container">
                 <nav class="nav-menu">
-                    <a href="job_search_page_emp.php" class="active">Vagas</a>
-                    <a href="emp_vagas.php">Minhas vagas</a>
+                    <a href="job_search_page_emp.php">Vagas</a>
+                    <a href="emp_vagas.php" class="active">Minhas vagas</a>
                     <a href="empresas_candidaturas.php">Candidaturas</a>
                     <a href="painel_candidato.php">Perfil</a>
                 </nav>
@@ -92,7 +218,7 @@
                 <div class="settings-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3EB489" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1-2-2 2 2 0 0 1-2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                     </svg>
                 </div>
             </div>
@@ -100,95 +226,19 @@
     </header>
     
     <div class="main-container">
-        <div class="search-container collapsed" id="search-container">
-            <div class="search-header" id="filter-toggle">
-                <div class="closed-content">
-                    <div class="filter-title">
-                        <strong>Filtros</strong>
-                        <span>de procura</span>
-                    </div>
-                    <div class="divider"></div>
-                    <div class="search-description" style="font-size: 1rem;">
-                        Procure por empregos que atendam os <strong>seus desejos</strong>.
-                    </div>
-                    <div class="toggle-icon-container">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="toggle-icon">
-                            <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                    </div>
-                </div>
-                
-                <div class="open-content">
-                    <p style="font-size: 1rem;">Procure por empregos que atendam os <strong>seus desejos</strong>.</p>
-                    <div class="toggle-icon-container">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="toggle-icon">
-                            <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                    </div>
-                </div>
+        <!-- Header da página com título e botão -->
+        <div class="page-header">
+            <div class="page-title-section">
+                <h1 class="page-title">Minhas Vagas</h1>
+                <p class="page-subtitle">Gerencie e acompanhe suas vagas publicadas</p>
             </div>
-            <div class="filter-options" id="filter-options">
-                <div class="filter-row">
-                    <div class="filter-label">Tipo de Trabalho:</div>
-                    <div class="filter-options-group">
-                        <div class="filter-option active">Todos</div>
-                        <div class="filter-option">Presencial</div>
-                        <div class="filter-option">Remoto</div>
-                    </div>
-                </div>
-                
-                <div class="filter-row">
-                    <div class="filter-label">Local de Trabalho:</div>
-                    <div class="filter-options-group">
-                        <select class="dropdown-select">
-                            <option>País</option>
-                        </select>
-                        <select class="dropdown-select">
-                            <option>Cidade*</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="filter-row">
-                    <div class="filter-label">Nível de Ensino Mínimo:</div>
-                    <div class="filter-options-group">
-                        <div class="filter-option">Todos</div>
-                        <div class="filter-option">Em andamento</div>
-                        <div class="filter-option active">Ensino médio</div>
-                        <div class="filter-option">Ensino superior</div>
-                    </div>
-                </div>
-                
-                <div class="filter-row">
-                    <div class="filter-label">Área de Trabalho:</div>
-                    <div class="filter-options-group">
-                        <div class="filter-option">Todos</div>
-                        <div class="filter-option">Administrativo</div>
-                        <div class="filter-option">Comercial</div>
-                        <div class="filter-option">Educação</div>
-                        <div class="filter-option">Engenharia</div>
-                        <div class="filter-option">Financeira</div>
-                        <div class="filter-option">Industrial</div>
-                        <div class="filter-option active">Marketing</div>
-                        <div class="filter-option">Logística</div>
-                        <div class="filter-option">mais</div>
-                    </div>
-                </div>
-                
-                <div class="filter-row">
-                    <div class="filter-label">Tipo de Contrato:</div>
-                    <div class="filter-options-group">
-                        <div class="filter-option active">Todos</div>
-                        <div class="filter-option">Efetivo</div>
-                        <div class="filter-option">Temporário</div>
-                        <div class="filter-option">Prestação de serviços</div>
-                    </div>
-                </div>
-                
-                <button class="apply-button">Aplicar</button>
-            </div>
+            <a href="criar_vaga.php" class="new-job-button">
+                <i class="fas fa-plus"></i>
+                <span>Criar Nova Vaga</span>
+            </a>
         </div>
-        
+
+        <!-- Formulário de pesquisa -->
         <div class="search-box">
             <div class="search-input">
                 <div class="search-icon">
@@ -197,12 +247,12 @@
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
                 </div>
-                <input type="text" placeholder="Pesquisar vagas...">
+                <input type="text" placeholder="Pesquisar vagas..." id="searchInput">
             </div>
-            <button class="search-button">Procurar</button>
+            <button class="search-button" onclick="searchJobs()">Procurar</button>
         </div>
 
-        <div class="job-listings">
+        <div class="job-listings" id="jobListings">
             <?php
             if (isset($vagas) && !empty($vagas)) {
                 foreach ($vagas as $vaga) {
@@ -235,7 +285,7 @@
                             break;
                     }
             ?>
-                <div class="job-card">
+                <div class="job-card" data-title="<?php echo htmlspecialchars(strtolower($vaga['titulo'])); ?>" data-department="<?php echo htmlspecialchars(strtolower($vaga['departamento'])); ?>">
                     <div class="job-header"><?php echo htmlspecialchars($vaga['empresa_nome']); ?></div>
                     <div class="job-content">
                         <div class="job-logo">
@@ -299,7 +349,7 @@
                         </div>
                         <div class="job-actions">
                             <div class="job-status <?php echo $statusClass; ?>"><?php echo $statusText; ?></div>
-                            <a href="job_view_page.php?id=<?php echo $vaga['id']; ?>" class="job-view">Visualizar detalhes</a>
+                            <div class="job-view">Visualizar detalhes</div>
                         </div>
                     </div>
                 </div>
@@ -313,34 +363,53 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Elementos do dropdown
-            const filterToggle = document.getElementById('filter-toggle');
-            const filterOptions = document.getElementById('filter-options');
-            const searchContainer = document.getElementById('search-container');
-            
-            // Estado inicial (fechado)
-            let isOpen = false;
-            
-            // Função para alternar o estado do dropdown
-            function toggleDropdown() {
-                isOpen = !isOpen;
+        // Função de pesquisa
+        function searchJobs() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const jobCards = document.querySelectorAll('.job-card');
+            let foundJobs = 0;
+
+            jobCards.forEach(card => {
+                const title = card.getAttribute('data-title') || '';
+                const department = card.getAttribute('data-department') || '';
                 
-                if (isOpen) {
-                    // Mostrar as opções de filtro
-                    filterOptions.classList.add('visible');
-                    // Remover a classe collapsed para aumentar a altura
-                    searchContainer.classList.remove('collapsed');
+                if (title.includes(searchTerm) || department.includes(searchTerm) || searchTerm === '') {
+                    card.style.display = 'block';
+                    foundJobs++;
                 } else {
-                    // Esconder as opções de filtro
-                    filterOptions.classList.remove('visible');
-                    // Adicionar a classe collapsed para reduzir a altura
-                    searchContainer.classList.add('collapsed');
+                    card.style.display = 'none';
+                }
+            });
+
+            // Mostrar mensagem se nenhuma vaga for encontrada
+            const jobListings = document.getElementById('jobListings');
+            const existingNoResults = jobListings.querySelector('.no-results');
+            
+            if (foundJobs === 0) {
+                if (!existingNoResults) {
+                    const noResultsDiv = document.createElement('div');
+                    noResultsDiv.className = 'no-results';
+                    noResultsDiv.innerHTML = 'Nenhuma vaga encontrada para "' + document.getElementById('searchInput').value + '"';
+                    noResultsDiv.style.cssText = 'text-align: center; padding: 20px; color: #666; font-style: italic;';
+                    jobListings.appendChild(noResultsDiv);
+                }
+            } else {
+                if (existingNoResults) {
+                    existingNoResults.remove();
                 }
             }
-            
-            // Adicionar evento de clique ao cabeçalho do filtro
-            filterToggle.addEventListener('click', toggleDropdown);
+        }
+
+        // Pesquisar ao pressionar Enter
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchJobs();
+            }
+        });
+
+        // Pesquisar em tempo real (opcional)
+        document.getElementById('searchInput').addEventListener('input', function() {
+            searchJobs();
         });
     </script>
     <script src="../js/dropdown.js"></script>
