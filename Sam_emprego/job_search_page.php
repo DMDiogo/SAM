@@ -446,7 +446,7 @@ try {
                         </div>
                         <div class="job-actions">
                             <div class="job-status status-open">A contratar</div>
-                            <a href="detalhes_vaga.php" class="job-view">Visualizar detalhes</a>
+                            <a href="job_view_page.php?id=<?php echo $vaga['id']; ?>" class="job-view">Visualizar detalhes</a>
                         </div>
                     </div>
                 </div>
