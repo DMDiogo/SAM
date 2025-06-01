@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 30, 2025 at 09:14 PM
+-- Generation Time: May 31, 2025 at 07:42 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -46,7 +46,8 @@ CREATE TABLE `adm` (
 
 INSERT INTO `adm` (`id_adm`, `nome`, `email`, `senha`, `telefone`, `cargo`, `departamento`, `matricula`, `data_admissao`, `nivel_acesso`) VALUES
 (3, 'Diogo Oliveira', 'diogodm1225@gmail.com', '$2y$10$fPubpk27CMUX5Fgb1mLrg.Nx3SostAJfWqbbSJy2FjXmcapDQ2aZi', 2147483647, NULL, NULL, NULL, NULL, NULL),
-(4, 'Kimi Carvalho', 'kienukimidecarvalho@gmail.com', '$2y$10$FqSfVOSIAp/gLuQ4V49US.y64.7ffr6F4d0BLDnPUhlhKKH3o5wXC', 2147483647, '', '', '', '2025-05-06', 'Administrador');
+(4, 'Kimi Carvalho', 'kienukimidecarvalho@gmail.com', '$2y$10$FqSfVOSIAp/gLuQ4V49US.y64.7ffr6F4d0BLDnPUhlhKKH3o5wXC', 2147483647, '', '', '', '2025-05-06', 'Administrador'),
+(8, 'Freddy Teca', 'fr3ddyteca@gmail.com', '$2y$10$xIncaDUrTgBrFJfqipP4a.FuhwTXVg.lXb7K4chVAscRQwUGXghfK', 2147483647, NULL, NULL, NULL, NULL, NULL);
 
 --
 -- Triggers `adm`
@@ -96,7 +97,8 @@ CREATE TABLE `adm_sessions` (
 --
 
 INSERT INTO `adm_sessions` (`session_id`, `adm_id`, `user_agent`, `ip_address`, `last_activity`) VALUES
-('v8off3hifq5l9tnk0vso17d82l', 4, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', '::1', '2025-05-30 17:05:32');
+('4hqrpp8lfbgvb13p9s0h4es7it', 4, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', '::1', '2025-05-30 23:26:10'),
+('vv04n3d0n4pe7q54lhj4sc910m', 8, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', '::1', '2025-05-30 23:34:10');
 
 -- --------------------------------------------------------
 
@@ -120,6 +122,40 @@ CREATE TABLE `ausencias` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `bancos_ativos`
+--
+
+CREATE TABLE `bancos_ativos` (
+  `id` int(11) NOT NULL,
+  `empresa_id` int(11) NOT NULL,
+  `banco_nome` varchar(100) NOT NULL,
+  `banco_codigo` varchar(10) NOT NULL,
+  `ativo` tinyint(1) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `bancos_ativos`
+--
+
+INSERT INTO `bancos_ativos` (`id`, `empresa_id`, `banco_nome`, `banco_codigo`, `ativo`) VALUES
+(2, 2, 'Banco BIC', 'BIC', 0),
+(3, 2, 'Banco Caixa Geral Angola', 'BCGA', 0),
+(4, 2, 'Banco Comercial Angolano (BCA)', 'BCA', 0),
+(6, 2, 'Banco de Desenvolvimento de Angola (BDA)', 'BDA', 0),
+(7, 2, 'Banco de Poupança e Crédito (BPC)', 'BPC', 0),
+(8, 2, 'Banco Económico', 'BE', 0),
+(9, 2, 'Banco Fomento Angola (BFA)', 'BFA', 0),
+(10, 2, 'Banco Millennium Atlântico', 'BMA', 1),
+(11, 2, 'Banco Sol', 'SOL', 0),
+(12, 2, 'Banco Valor', 'VALOR', 0),
+(13, 2, 'Banco Yetu', 'YETU', 0),
+(14, 2, 'Banco VTB África', 'VTB', 1),
+(15, 2, 'Banco Angolano de Investimentos (BAI)', 'BAI', 1),
+(17, 2, 'Banco de Poupança do Kimi', 'BPK', 0);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `beneficios`
 --
 
@@ -129,6 +165,32 @@ CREATE TABLE `beneficios` (
   `valor` decimal(10,2) NOT NULL,
   `fun_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `cargos`
+--
+
+CREATE TABLE `cargos` (
+  `id` int(11) NOT NULL,
+  `nome` varchar(100) NOT NULL,
+  `departamento_id` int(11) NOT NULL,
+  `salario_base` decimal(10,2) NOT NULL,
+  `empresa_id` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `cargos`
+--
+
+INSERT INTO `cargos` (`id`, `nome`, `departamento_id`, `salario_base`, `empresa_id`, `created_at`) VALUES
+(1, 'Programador', 1, 333000.00, 2, '2025-05-30 21:03:34'),
+(2, 'Vendas', 2, 220000.00, 2, '2025-05-30 21:08:09'),
+(3, 'NNC', 3, 300000.00, 2, '2025-05-30 21:38:49'),
+(4, 'Programadores', 1, 50001.00, 2, '2025-05-30 22:07:48'),
+(5, 'Backend', 4, 222000.00, 2, '2025-05-30 22:22:15');
 
 -- --------------------------------------------------------
 
@@ -152,6 +214,29 @@ INSERT INTO `configuracoes_seguranca` (`id`, `adm_id`, `dois_fatores`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `departamentos`
+--
+
+CREATE TABLE `departamentos` (
+  `id` int(11) NOT NULL,
+  `nome` varchar(100) NOT NULL,
+  `empresa_id` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `departamentos`
+--
+
+INSERT INTO `departamentos` (`id`, `nome`, `empresa_id`, `created_at`) VALUES
+(1, 'TI', 2, '2025-05-30 21:02:27'),
+(2, 'Marketings', 2, '2025-05-30 21:07:41'),
+(3, 'ORG', 2, '2025-05-30 21:12:58'),
+(4, 'TI2', 2, '2025-05-30 22:08:57');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `dispositivos_confiaveis`
 --
 
@@ -169,7 +254,8 @@ CREATE TABLE `dispositivos_confiaveis` (
 --
 
 INSERT INTO `dispositivos_confiaveis` (`id`, `adm_id`, `user_agent`, `ip_address`, `data_criacao`, `ultimo_acesso`) VALUES
-(1, 4, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', '::1', '2025-05-30 15:02:19', '2025-05-30 17:04:58');
+(1, 4, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', '::1', '2025-05-30 15:02:19', '2025-05-31 15:30:44'),
+(4, 8, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', '::1', '2025-05-30 23:32:40', '2025-05-30 23:32:40');
 
 -- --------------------------------------------------------
 
@@ -212,7 +298,8 @@ CREATE TABLE `empresa` (
 --
 
 INSERT INTO `empresa` (`id_empresa`, `nome`, `nipc`, `endereco`, `email_corp`, `telefone`, `setor_atuacao`, `num_fun`, `data_cadastro`, `adm_id`) VALUES
-(2, 'Carvalho Lda', '18041959', 'rua Pedro de Castro Van-Dunem Loy, Casa 4, Vila Ecocampo', 'kienukimidecarvalho@gmail.com', '924135515', 'servicos', 1, '2025-05-27', 4);
+(2, 'Carvalho Lda', '18041959', 'rua Pedro de Castro Van-Dunem Loy, Casa 4, Vila Ecocampo', 'kienukimidecarvalho@gmail.com', '924135515', 'servicos', 1, '2025-05-27', 4),
+(4, 'Lil Teca SA', '12345', 'Nova Vida', 'fr3ddyteca@gmail.com', '975851987', 'tecnologia', 1, '2025-05-31', 8);
 
 --
 -- Triggers `empresa`
@@ -293,7 +380,8 @@ CREATE TABLE `funcionario` (
 --
 
 INSERT INTO `funcionario` (`id_fun`, `num_mecanografico`, `nome`, `foto`, `bi`, `emissao_bi`, `validade_bi`, `data_nascimento`, `pais`, `morada`, `genero`, `num_agregados`, `contato_emergencia`, `nome_contato_emergencia`, `telemovel`, `email`, `estado`, `cargo`, `departamento`, `tipo_trabalhador`, `num_conta_bancaria`, `banco`, `iban`, `salario_base`, `num_ss`, `data_admissao`, `empresa_id`, `status`) VALUES
-(1, 'EMP-0001', 'Kimi Carvalho', NULL, '32432432423', '2025-05-06', '2025-05-30', '2025-04-29', 'angola', 'rua Pedro de Castro Van-Dunem Loy, Casa 4, Vila Ecocampo', 'Masculino', 6, '', '', '924135515', 'kienukimidecarvalho@gmail.com', 'Ativo', 'Analista Financeiro', 'tecnologia', 'Temporário', '1111', 'BAI', '678786', 6666.00, '2432432432', '2025-05-28', 2, 'pendente_biometria');
+(1, 'EMP-0001', 'Kimi Carvalho', NULL, '32432432423', '2025-05-06', '2025-05-30', '2025-04-29', 'angola', 'rua Pedro de Castro Van-Dunem Loy, Casa 4, Vila Ecocampo', 'Masculino', 6, '', '', '924135515', 'kienukimidecarvalho@gmail.com', 'Ativo', 'Analista Financeiro', 'tecnologia', 'Temporário', '1111', 'BAI', '678786', 6666.00, '2432432432', '2025-05-28', 2, 'pendente_biometria'),
+(7, 'EMP-0002', 'Jorge Mundula', NULL, '32432432423322', '2025-05-05', '2025-06-05', '2025-05-06', 'angola', 'Fubu', 'Masculino', 2, '924135515', 'Kimi Carvalho', '924135515', 'jorgemundula@gmail.com', 'Ativo', '2', '2', 'Efetivo', '111111154234', 'BAI', '432432432425', 220000.00, '243243243243123123324', '2025-05-31', 2, 'pendente_biometria');
 
 --
 -- Triggers `funcionario`
@@ -374,7 +462,27 @@ CREATE TABLE `log_atividades` (
 
 INSERT INTO `log_atividades` (`id`, `adm_id`, `acao`, `ip_address`, `data_hora`) VALUES
 (1, 4, 'Atualização de Perfil', '::1', '2025-05-30 16:31:24'),
-(2, 4, 'Login Efetuado', '::1', '2025-05-30 17:05:31');
+(2, 4, 'Login Efetuado', '::1', '2025-05-30 17:05:31'),
+(3, 4, 'Login Efetuado', '::1', '2025-05-30 19:31:03'),
+(4, 4, 'Login Efetuado', '::1', '2025-05-30 19:32:59'),
+(5, 4, 'Login Efetuado', '::1', '2025-05-30 23:26:10'),
+(6, 8, 'Login Efetuado', '::1', '2025-05-30 23:34:06');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `politicas_trabalho`
+--
+
+CREATE TABLE `politicas_trabalho` (
+  `id` int(11) NOT NULL,
+  `empresa_id` int(11) NOT NULL,
+  `tipo` enum('horario','homeoffice','vestimenta') NOT NULL,
+  `titulo` varchar(100) NOT NULL,
+  `descricao` text NOT NULL,
+  `valor` varchar(255) NOT NULL,
+  `data_atualizacao` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -407,6 +515,24 @@ CREATE TABLE `registros_ponto` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `turnos_trabalho`
+--
+
+CREATE TABLE `turnos_trabalho` (
+  `id` int(11) NOT NULL,
+  `empresa_id` int(11) NOT NULL,
+  `nome` varchar(100) NOT NULL,
+  `dias_semana` varchar(100) NOT NULL,
+  `hora_entrada` time NOT NULL,
+  `hora_saida` time NOT NULL,
+  `almoco_inicio` time NOT NULL,
+  `almoco_fim` time NOT NULL,
+  `data_criacao` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 --
 -- Indexes for dumped tables
 --
@@ -434,6 +560,13 @@ ALTER TABLE `ausencias`
   ADD KEY `empresa_id` (`empresa_id`);
 
 --
+-- Indexes for table `bancos_ativos`
+--
+ALTER TABLE `bancos_ativos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `empresa_id` (`empresa_id`);
+
+--
 -- Indexes for table `beneficios`
 --
 ALTER TABLE `beneficios`
@@ -441,11 +574,26 @@ ALTER TABLE `beneficios`
   ADD KEY `fk_beneficios_funcionario1_idx` (`fun_id`);
 
 --
+-- Indexes for table `cargos`
+--
+ALTER TABLE `cargos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `departamento_id` (`departamento_id`),
+  ADD KEY `empresa_id` (`empresa_id`);
+
+--
 -- Indexes for table `configuracoes_seguranca`
 --
 ALTER TABLE `configuracoes_seguranca`
   ADD PRIMARY KEY (`id`),
   ADD KEY `adm_id` (`adm_id`);
+
+--
+-- Indexes for table `departamentos`
+--
+ALTER TABLE `departamentos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `empresa_id` (`empresa_id`);
 
 --
 -- Indexes for table `dispositivos_confiaveis`
@@ -497,6 +645,13 @@ ALTER TABLE `log_atividades`
   ADD KEY `adm_id` (`adm_id`);
 
 --
+-- Indexes for table `politicas_trabalho`
+--
+ALTER TABLE `politicas_trabalho`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `empresa_id` (`empresa_id`);
+
+--
 -- Indexes for table `redefinicao_senha`
 --
 ALTER TABLE `redefinicao_senha`
@@ -512,6 +667,13 @@ ALTER TABLE `registros_ponto`
   ADD KEY `data` (`data`);
 
 --
+-- Indexes for table `turnos_trabalho`
+--
+ALTER TABLE `turnos_trabalho`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `empresa_id` (`empresa_id`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -519,7 +681,7 @@ ALTER TABLE `registros_ponto`
 -- AUTO_INCREMENT for table `adm`
 --
 ALTER TABLE `adm`
-  MODIFY `id_adm` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id_adm` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `ausencias`
@@ -528,10 +690,22 @@ ALTER TABLE `ausencias`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `bancos_ativos`
+--
+ALTER TABLE `bancos_ativos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+
+--
 -- AUTO_INCREMENT for table `beneficios`
 --
 ALTER TABLE `beneficios`
   MODIFY `id_beneficio` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `cargos`
+--
+ALTER TABLE `cargos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `configuracoes_seguranca`
@@ -540,10 +714,16 @@ ALTER TABLE `configuracoes_seguranca`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
+-- AUTO_INCREMENT for table `departamentos`
+--
+ALTER TABLE `departamentos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
 -- AUTO_INCREMENT for table `dispositivos_confiaveis`
 --
 ALTER TABLE `dispositivos_confiaveis`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `documentos`
@@ -555,7 +735,7 @@ ALTER TABLE `documentos`
 -- AUTO_INCREMENT for table `empresa`
 --
 ALTER TABLE `empresa`
-  MODIFY `id_empresa` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id_empresa` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `falta`
@@ -567,13 +747,19 @@ ALTER TABLE `falta`
 -- AUTO_INCREMENT for table `funcionario`
 --
 ALTER TABLE `funcionario`
-  MODIFY `id_fun` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id_fun` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `log_atividades`
 --
 ALTER TABLE `log_atividades`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `politicas_trabalho`
+--
+ALTER TABLE `politicas_trabalho`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `redefinicao_senha`
@@ -585,6 +771,12 @@ ALTER TABLE `redefinicao_senha`
 -- AUTO_INCREMENT for table `registros_ponto`
 --
 ALTER TABLE `registros_ponto`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `turnos_trabalho`
+--
+ALTER TABLE `turnos_trabalho`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -605,16 +797,35 @@ ALTER TABLE `ausencias`
   ADD CONSTRAINT `ausencias_ibfk_2` FOREIGN KEY (`empresa_id`) REFERENCES `empresa` (`id_empresa`);
 
 --
+-- Constraints for table `bancos_ativos`
+--
+ALTER TABLE `bancos_ativos`
+  ADD CONSTRAINT `bancos_ativos_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresa` (`id_empresa`);
+
+--
 -- Constraints for table `beneficios`
 --
 ALTER TABLE `beneficios`
   ADD CONSTRAINT `beneficios_ibfk_1` FOREIGN KEY (`fun_id`) REFERENCES `funcionario` (`id_fun`) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 --
+-- Constraints for table `cargos`
+--
+ALTER TABLE `cargos`
+  ADD CONSTRAINT `cargos_ibfk_1` FOREIGN KEY (`departamento_id`) REFERENCES `departamentos` (`id`),
+  ADD CONSTRAINT `cargos_ibfk_2` FOREIGN KEY (`empresa_id`) REFERENCES `empresa` (`id_empresa`);
+
+--
 -- Constraints for table `configuracoes_seguranca`
 --
 ALTER TABLE `configuracoes_seguranca`
   ADD CONSTRAINT `configuracoes_seguranca_ibfk_1` FOREIGN KEY (`adm_id`) REFERENCES `adm` (`id_adm`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `departamentos`
+--
+ALTER TABLE `departamentos`
+  ADD CONSTRAINT `departamentos_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresa` (`id_empresa`);
 
 --
 -- Constraints for table `dispositivos_confiaveis`
@@ -653,10 +864,22 @@ ALTER TABLE `log_atividades`
   ADD CONSTRAINT `log_atividades_ibfk_1` FOREIGN KEY (`adm_id`) REFERENCES `adm` (`id_adm`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `politicas_trabalho`
+--
+ALTER TABLE `politicas_trabalho`
+  ADD CONSTRAINT `politicas_trabalho_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresa` (`id_empresa`);
+
+--
 -- Constraints for table `registros_ponto`
 --
 ALTER TABLE `registros_ponto`
   ADD CONSTRAINT `registros_ponto_ibfk_1` FOREIGN KEY (`funcionario_id`) REFERENCES `funcionario` (`id_fun`);
+
+--
+-- Constraints for table `turnos_trabalho`
+--
+ALTER TABLE `turnos_trabalho`
+  ADD CONSTRAINT `turnos_trabalho_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresa` (`id_empresa`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
