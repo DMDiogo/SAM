@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS politicas_trabalho (
     tipo ENUM('horario', 'homeoffice', 'vestimenta') NOT NULL,
     titulo VARCHAR(100) NOT NULL,
     descricao TEXT NOT NULL,
-    valor TEXT NOT NULL,
+    valor VARCHAR(255) NOT NULL,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (empresa_id) REFERENCES empresa(id_empresa)
 )";
@@ -156,76 +156,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Processar formulário de política
         if (isset($_POST['salvar_politica'])) {
             $tipo = $_POST['tipo'];
-            
-            if ($tipo === 'horario') {
-                $tipo_config = $_POST['tipo_config_horario'];
-                
-                if ($tipo_config === 'turno') {
-                    // Criar/atualizar turno padrão
-                    $nome_turno = $_POST['nome_turno'];
-                    $dias = $_POST['dias_selecionados'];
-                    $hora_entrada = $_POST['hora_entrada'];
-                    $hora_saida = $_POST['hora_saida'];
-                    $almoco_inicio = $_POST['almoco_inicio'];
-                    $almoco_fim = $_POST['almoco_fim'];
-                    
-                    $sql = "INSERT INTO turnos_padrao (empresa_id, nome_turno, hora_entrada, hora_saida, almoco_inicio, almoco_fim, dias_semana) 
-                           VALUES (?, ?, ?, ?, ?, ?, ?)";
-                    $stmt = $conn->prepare($sql);
-                    $stmt->bind_param("issssss", $empresa_id, $nome_turno, $hora_entrada, $hora_saida, $almoco_inicio, $almoco_fim, $dias);
-                    
-                    if (!$stmt->execute()) {
-                        die("Erro ao salvar turno: " . $stmt->error);
-                    }
-                    
-                } else {
-                    // Salvar horário personalizado
-                    $funcionario_id = $_POST['funcionario_id'];
-                    $turno_id = $_POST['turno_id'];
-                    $dias = $_POST['dias_personalizado'];
-                    $hora_entrada = $_POST['hora_entrada_personalizado'];
-                    $hora_saida = $_POST['hora_saida_personalizado'];
-                    $almoco_inicio = $_POST['almoco_inicio_personalizado'];
-                    $almoco_fim = $_POST['almoco_fim_personalizado'];
-                    
-                    // Verificar se já existe um horário para este funcionário
-                    $sql_check = "SELECT id FROM horarios_funcionarios WHERE funcionario_id = ?";
-                    $stmt_check = $conn->prepare($sql_check);
-                    $stmt_check->bind_param("i", $funcionario_id);
-                    $stmt_check->execute();
-                    $result_check = $stmt_check->get_result();
-                    
-                    if ($result_check->num_rows > 0) {
-                        // Atualizar horário existente
-                        $sql = "UPDATE horarios_funcionarios SET 
-                               turno_id = ?, 
-                               hora_entrada = ?, 
-                               hora_saida = ?, 
-                               almoco_inicio = ?, 
-                               almoco_fim = ?, 
-                               dias_semana = ?,
-                               tipo = ?
-                               WHERE funcionario_id = ?";
-                        $stmt = $conn->prepare($sql);
-                        $tipo_horario = $turno_id ? 'turno' : 'personalizado';
-                        $stmt->bind_param("issssssi", $turno_id, $hora_entrada, $hora_saida, $almoco_inicio, $almoco_fim, $dias, $tipo_horario, $funcionario_id);
-                    } else {
-                        // Inserir novo horário
-                        $sql = "INSERT INTO horarios_funcionarios 
-                               (funcionario_id, turno_id, hora_entrada, hora_saida, almoco_inicio, almoco_fim, dias_semana, tipo) 
-                               VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-                        $stmt = $conn->prepare($sql);
-                        $tipo_horario = $turno_id ? 'turno' : 'personalizado';
-                        $stmt->bind_param("iissssss", $funcionario_id, $turno_id, $hora_entrada, $hora_saida, $almoco_inicio, $almoco_fim, $dias, $tipo_horario);
-                    }
-                    
-                    if (!$stmt->execute()) {
-                        die("Erro ao salvar horário: " . $stmt->error);
-                    }
-                }
-            } else {
-                $valor = $_POST['valor'];
-            }
+            $titulo = $_POST['titulo'];
+            $descricao = $_POST['descricao'];
+            $valor = $_POST['valor'];
 
             // Verificar se já existe uma política deste tipo
             $sql_check = "SELECT id FROM politicas_trabalho WHERE empresa_id = ? AND tipo = ?";
@@ -250,9 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 die("Erro ao salvar política: " . $stmt->error);
             }
 
-            // Debug
-            error_log("Política salva com sucesso: " . $tipo);
-
+            // Redirecionar para evitar reenvio do formulário
             header("Location: " . $_SERVER['PHP_SELF']);
             exit();
         }
@@ -353,9 +284,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $novo_nome = $_POST['edit_banco_nome'];
             $novo_codigo = $_POST['edit_banco_codigo'];
             
-            // Debug
-            error_log("Editando banco: ID=" . $banco_id . ", Nome=" . $novo_nome . ", Codigo=" . $novo_codigo);
-            
             $sql = "UPDATE bancos_ativos SET banco_nome = ?, banco_codigo = ? WHERE id = ? AND empresa_id = ?";
             $stmt = $conn->prepare($sql);
             if (!$stmt) {
@@ -366,9 +294,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$stmt->execute()) {
                 die("Erro ao atualizar banco: " . $stmt->error);
             }
-            
-            // Debug
-            error_log("Banco atualizado com sucesso");
             
             header("Location: " . $_SERVER['PHP_SELF'] . "#bancos");
             exit();
@@ -398,9 +323,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $departamento_id = $_POST['departamento_id'];
             $novo_nome = $_POST['edit_departamento_nome'];
             
-            // Debug
-            error_log("Editando departamento: ID=" . $departamento_id . ", Nome=" . $novo_nome);
-            
             $sql = "UPDATE departamentos SET nome = ? WHERE id = ? AND empresa_id = ?";
             $stmt = $conn->prepare($sql);
             if (!$stmt) {
@@ -411,9 +333,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$stmt->execute()) {
                 die("Erro ao atualizar departamento: " . $stmt->error);
             }
-            
-            // Debug
-            error_log("Departamento atualizado com sucesso");
             
             header("Location: " . $_SERVER['PHP_SELF'] . "#departamentos");
             exit();
@@ -426,9 +345,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $novo_salario = $_POST['edit_cargo_salario'];
             $novo_departamento = $_POST['edit_cargo_departamento'];
             
-            // Debug
-            error_log("Editando cargo: ID=" . $cargo_id . ", Nome=" . $novo_nome . ", Salario=" . $novo_salario . ", Departamento=" . $novo_departamento);
-            
             $sql = "UPDATE cargos SET nome = ?, salario_base = ?, departamento_id = ? WHERE id = ? AND empresa_id = ?";
             $stmt = $conn->prepare($sql);
             if (!$stmt) {
@@ -439,9 +355,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$stmt->execute()) {
                 die("Erro ao atualizar cargo: " . $stmt->error);
             }
-            
-            // Debug
-            error_log("Cargo atualizado com sucesso");
             
             header("Location: " . $_SERVER['PHP_SELF'] . "#cargos");
             exit();
@@ -463,19 +376,6 @@ $result_politicas = $stmt_politicas->get_result();
 $politicas = array();
 while ($row = $result_politicas->fetch_assoc()) {
     $politicas[$row['tipo']] = $row;
-    if ($row['tipo'] === 'horario') {
-        $horario_data = json_decode($row['valor'], true);
-        $dias_formatados = formatarDiasSemana($horario_data['dias']);
-        $horario = $horario_data['horario'];
-        $row['horario_formatado'] = sprintf(
-            "%s: %s às %s (Almoço: %s às %s)",
-            $dias_formatados,
-            $horario['entrada'],
-            $horario['saida'],
-            $horario['almoco']['inicio'],
-            $horario['almoco']['fim']
-        );
-    }
 }
 
 // Buscar bancos ativos
@@ -1334,7 +1234,7 @@ while ($row = $result_ativos->fetch_assoc()) {
                     <div class="policies-grid">
                         <div class="policy-card">
                             <h4>Horário de Trabalho</h4>
-                            <p><?php echo isset($politicas['horario']['horario_formatado']) ? $politicas['horario']['horario_formatado'] : 'Não configurado'; ?></p>
+                            <p>Segunda a Sexta: 8h - 18h</p>
                             <button class="btn-primary" onclick="abrirModal('horario')">Editar</button>
                         </div>
                         <div class="policy-card">
@@ -1660,120 +1560,38 @@ while ($row = $result_ativos->fetch_assoc()) {
         <span class="close" onclick="fecharModal('modal')">&times;</span>
         <h2 id="modal-titulo">Editar Política</h2>
         <div id="modal-conteudo">
-            <form id="form-politica" method="POST" action="rh_config.php">
+            <form id="form-politica" method="POST">
                 <input type="hidden" name="tipo" id="politica-tipo">
                 
                 <!-- Campos específicos para horário de trabalho -->
                 <div id="campos-horario" style="display: none;">
                     <div class="form-group">
-                        <label>Tipo de Configuração:</label>
-                        <select id="tipo_config_horario" onchange="toggleTipoHorario()">
-                            <option value="turno">Criar Turno Padrão</option>
-                            <option value="personalizado">Horário Personalizado</option>
-                        </select>
+                        <label>Dias de Trabalho:</label>
+                        <div class="dias-buttons">
+                            <button type="button" class="dia-btn" data-dia="segunda">Segunda</button>
+                            <button type="button" class="dia-btn" data-dia="terca">Terça</button>
+                            <button type="button" class="dia-btn" data-dia="quarta">Quarta</button>
+                            <button type="button" class="dia-btn" data-dia="quinta">Quinta</button>
+                            <button type="button" class="dia-btn" data-dia="sexta">Sexta</button>
+                            <button type="button" class="dia-btn" data-dia="sabado">Sábado</button>
+                            <button type="button" class="dia-btn" data-dia="domingo">Domingo</button>
+                        </div>
+                        <input type="hidden" name="dias_selecionados" id="dias_selecionados">
                     </div>
-
-                    <!-- Campos para Turno Padrão -->
-                    <div id="campos-turno">
-                        <div class="form-group">
-                            <label>Nome do Turno:</label>
-                            <input type="text" name="nome_turno" id="nome_turno" placeholder="Ex: Turno Matutino">
-                        </div>
-                        <div class="form-group">
-                            <label>Dias de Trabalho:</label>
-                            <div class="dias-buttons">
-                                <button type="button" class="dia-btn" data-dia="segunda">Segunda</button>
-                                <button type="button" class="dia-btn" data-dia="terca">Terça</button>
-                                <button type="button" class="dia-btn" data-dia="quarta">Quarta</button>
-                                <button type="button" class="dia-btn" data-dia="quinta">Quinta</button>
-                                <button type="button" class="dia-btn" data-dia="sexta">Sexta</button>
-                                <button type="button" class="dia-btn" data-dia="sabado">Sábado</button>
-                                <button type="button" class="dia-btn" data-dia="domingo">Domingo</button>
-                            </div>
-                            <input type="hidden" name="dias_selecionados" id="dias_selecionados">
-                        </div>
-                        <div class="form-group">
-                            <label>Horário de Entrada:</label>
-                            <input type="time" name="hora_entrada" id="hora_entrada" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Horário de Saída:</label>
-                            <input type="time" name="hora_saida" id="hora_saida" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Intervalo para Almoço:</label>
-                            <div class="intervalo-group">
-                                <input type="time" name="almoco_inicio" id="almoco_inicio" placeholder="Início" required>
-                                <span>até</span>
-                                <input type="time" name="almoco_fim" id="almoco_fim" placeholder="Fim" required>
-                            </div>
-                        </div>
+                    <div class="form-group">
+                        <label>Horário de Entrada:</label>
+                        <input type="time" name="hora_entrada" id="hora_entrada">
                     </div>
-
-                    <!-- Campos para Horário Personalizado -->
-                    <div id="campos-personalizado" style="display: none;">
-                        <div class="form-group">
-                            <label>Funcionário:</label>
-                            <select name="funcionario_id" id="funcionario_id">
-                                <option value="">Selecione um funcionário</option>
-                                <?php
-                                // Buscar funcionários da empresa
-                                $sql_func = "SELECT id_funcionario, nome FROM funcionarios WHERE empresa_id = ?";
-                                $stmt_func = $conn->prepare($sql_func);
-                                $stmt_func->bind_param("i", $empresa_id);
-                                $stmt_func->execute();
-                                $result_func = $stmt_func->get_result();
-                                while($func = $result_func->fetch_assoc()) {
-                                    echo "<option value='".$func['id_funcionario']."'>".$func['nome']."</option>";
-                                }
-                                ?>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Turno:</label>
-                            <select name="turno_id" id="turno_id">
-                                <option value="">Selecione um turno</option>
-                                <?php
-                                // Buscar turnos padrão da empresa
-                                $sql_turnos = "SELECT id, nome_turno FROM turnos_padrao WHERE empresa_id = ?";
-                                $stmt_turnos = $conn->prepare($sql_turnos);
-                                $stmt_turnos->bind_param("i", $empresa_id);
-                                $stmt_turnos->execute();
-                                $result_turnos = $stmt_turnos->get_result();
-                                while($turno = $result_turnos->fetch_assoc()) {
-                                    echo "<option value='".$turno['id']."'>".$turno['nome_turno']."</option>";
-                                }
-                                ?>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Dias de Trabalho:</label>
-                            <div class="dias-buttons">
-                                <button type="button" class="dia-btn" data-dia="segunda">Segunda</button>
-                                <button type="button" class="dia-btn" data-dia="terca">Terça</button>
-                                <button type="button" class="dia-btn" data-dia="quarta">Quarta</button>
-                                <button type="button" class="dia-btn" data-dia="quinta">Quinta</button>
-                                <button type="button" class="dia-btn" data-dia="sexta">Sexta</button>
-                                <button type="button" class="dia-btn" data-dia="sabado">Sábado</button>
-                                <button type="button" class="dia-btn" data-dia="domingo">Domingo</button>
-                            </div>
-                            <input type="hidden" name="dias_personalizado" id="dias_personalizado">
-                        </div>
-                        <div class="form-group">
-                            <label>Horário de Entrada:</label>
-                            <input type="time" name="hora_entrada_personalizado" id="hora_entrada_personalizado">
-                        </div>
-                        <div class="form-group">
-                            <label>Horário de Saída:</label>
-                            <input type="time" name="hora_saida_personalizado" id="hora_saida_personalizado">
-                        </div>
-                        <div class="form-group">
-                            <label>Intervalo para Almoço:</label>
-                            <div class="intervalo-group">
-                                <input type="time" name="almoco_inicio_personalizado" id="almoco_inicio_personalizado" placeholder="Início">
-                                <span>até</span>
-                                <input type="time" name="almoco_fim_personalizado" id="almoco_fim_personalizado" placeholder="Fim">
-                            </div>
+                    <div class="form-group">
+                        <label>Horário de Saída:</label>
+                        <input type="time" name="hora_saida" id="hora_saida">
+                    </div>
+                    <div class="form-group">
+                        <label>Intervalo para Almoço:</label>
+                        <div class="intervalo-group">
+                            <input type="time" name="almoco_inicio" id="almoco_inicio" placeholder="Início">
+                            <span>até</span>
+                            <input type="time" name="almoco_fim" id="almoco_fim" placeholder="Fim">
                         </div>
                     </div>
                 </div>
@@ -1833,7 +1651,7 @@ while ($row = $result_ativos->fetch_assoc()) {
     <div class="modal-banco-content">
         <span class="close" onclick="fecharModal('modal-banco')">&times;</span>
         <h2>Editar Banco</h2>
-        <form id="form-editar-banco" method="POST" action="rh_config.php">
+        <form id="form-editar-banco" method="POST">
             <input type="hidden" name="banco_id" id="banco_id">
             <div class="form-group">
                 <label for="edit_banco_nome">Nome do Banco:</label>
@@ -1853,7 +1671,7 @@ while ($row = $result_ativos->fetch_assoc()) {
     <div class="modal-banco-content">
         <span class="close" onclick="fecharModal('modal-departamento')">&times;</span>
         <h2>Editar Departamento</h2>
-        <form id="form-editar-departamento" method="POST" action="rh_config.php">
+        <form id="form-editar-departamento" method="POST">
             <input type="hidden" name="departamento_id" id="edit_departamento_id">
             <div class="form-group">
                 <label for="edit_departamento_nome">Nome do Departamento:</label>
@@ -1869,7 +1687,7 @@ while ($row = $result_ativos->fetch_assoc()) {
     <div class="modal-banco-content">
         <span class="close" onclick="fecharModal('modal-cargo')">&times;</span>
         <h2>Editar Cargo</h2>
-        <form id="form-editar-cargo" method="POST" action="rh_config.php">
+        <form id="form-editar-cargo" method="POST">
             <input type="hidden" name="cargo_id" id="edit_cargo_id">
             <div class="form-group">
                 <label for="edit_cargo_nome">Nome do Cargo:</label>
@@ -1908,59 +1726,42 @@ while ($row = $result_ativos->fetch_assoc()) {
 
 <script src="../js/theme.js"></script>
 <script>
-// Função para fechar modais
-function fecharModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
-}
-
-// Função para editar departamento
 function editarDepartamento(id, nome) {
-    console.log('Editar Departamento:', id, nome); // Debug
     const modal = document.getElementById('modal-departamento');
+    const form = document.getElementById('form-editar-departamento');
+    
     document.getElementById('edit_departamento_id').value = id;
     document.getElementById('edit_departamento_nome').value = nome;
+    
     modal.style.display = 'block';
 }
 
-// Função para editar cargo
+function excluirDepartamento(id) {
+    if(confirm('Tem certeza que deseja excluir este departamento?')) {
+        window.location.href = `gerenciar_departamentos.php?acao=excluir&id=${id}`;
+    }
+}
+
 function editarCargo(id, nome, salario, departamento_id) {
-    console.log('Editar Cargo:', id, nome, salario, departamento_id); // Debug
     const modal = document.getElementById('modal-cargo');
+    const form = document.getElementById('form-editar-cargo');
+    
     document.getElementById('edit_cargo_id').value = id;
     document.getElementById('edit_cargo_nome').value = nome;
     document.getElementById('edit_cargo_salario').value = salario;
     document.getElementById('edit_cargo_departamento').value = departamento_id;
+    
     modal.style.display = 'block';
 }
 
-// Função para editar banco
-function editarBanco(id, nome, codigo) {
-    console.log('Editar Banco:', id, nome, codigo); // Debug
-    const modal = document.getElementById('modal-banco');
-    document.getElementById('banco_id').value = id;
-    document.getElementById('edit_banco_nome').value = nome;
-    document.getElementById('edit_banco_codigo').value = codigo;
-    modal.style.display = 'block';
-}
-
-// Função para excluir banco
-function excluirBanco(id) {
-    console.log('Excluir Banco:', id); // Debug
-    if (confirm('Tem certeza que deseja excluir este banco?')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.innerHTML = `
-            <input type="hidden" name="banco_id" value="${id}">
-            <input type="hidden" name="excluir_banco" value="1">
-        `;
-        document.body.appendChild(form);
-        form.submit();
+function excluirCargo(id) {
+    if(confirm('Tem certeza que deseja excluir este cargo?')) {
+        window.location.href = `gerenciar_cargos.php?acao=excluir&id=${id}`;
     }
 }
 
-// Função para abrir o modal de políticas
+// Função para abrir o modal
 function abrirModal(tipo) {
-    console.log('Abrir Modal Política:', tipo); // Debug
     const modal = document.getElementById('modal');
     const modalTitulo = document.getElementById('modal-titulo');
     const form = document.getElementById('form-politica');
@@ -1970,75 +1771,32 @@ function abrirModal(tipo) {
     const camposVestimenta = document.getElementById('campos-vestimenta');
     const camposPadrao = document.getElementById('campos-padrao');
     
-    // Ocultar todos os campos específicos primeiro
-    camposHorario.style.display = 'none';
-    camposHomeoffice.style.display = 'none';
-    camposVestimenta.style.display = 'none';
-    camposPadrao.style.display = 'none';
-    
-    // Resetar classes 'selecionado' dos botões de dias
-    document.querySelectorAll('.dia-btn').forEach(btn => btn.classList.remove('selecionado'));
-    document.getElementById('dias_selecionados').value = '';
-    document.getElementById('dias_homeoffice').value = '';
-
     // Definir título e valores baseado no tipo
     switch(tipo) {
         case 'horario':
             modalTitulo.textContent = 'Editar Horário de Trabalho';
             politicaTipo.value = 'horario';
             camposHorario.style.display = 'block';
+            camposHomeoffice.style.display = 'none';
+            camposVestimenta.style.display = 'none';
+            camposPadrao.style.display = 'none';
             
             // Carregar valores existentes ou usar padrão
-            const horarioData = <?php echo isset($politicas['horario']) ? json_encode($politicas['horario']['valor']) : 'null'; ?>;
-
-            // Limpar campos de horário antes de carregar novos dados
-            document.getElementById('hora_entrada').value = '';
-            document.getElementById('hora_saida').value = '';
-            document.getElementById('almoco_inicio').value = '';
-            document.getElementById('almoco_fim').value = '';
-
-            if (horarioData && horarioData !== 'null') {
-                try {
-                    const dados = JSON.parse(horarioData);
-                    const dias = dados.dias ? dados.dias.split(',') : [];
-                    dias.forEach(dia => {
-                        const btn = document.querySelector(`.dia-btn[data-dia="${dia}"]`);
-                        if (btn) btn.classList.add('selecionado');
-                    });
-                    
-                    if(dados.horario) {
-                        document.getElementById('hora_entrada').value = dados.horario.entrada || '';
-                        document.getElementById('hora_saida').value = dados.horario.saida || '';
-                        if(dados.horario.almoco) {
-                             document.getElementById('almoco_inicio').value = dados.horario.almoco.inicio || '';
-                             document.getElementById('almoco_fim').value = dados.horario.almoco.fim || '';
-                        }
-                    }
-                    // Definir o tipo de configuração no select (assumindo que a política de horário salva era 'turno')
-                    document.getElementById('tipo_config_horario').value = 'turno'; // Ou 'personalizado' se aplicável
-                    toggleTipoHorario(); // Atualizar visibilidade dos campos
-
-                } catch (e) {
-                    console.error("Erro ao parsear dados de horário:", e);
-                    // Se houver erro ao carregar dados, exibir campos de turno por padrão
-                    document.getElementById('tipo_config_horario').value = 'turno';
-                    toggleTipoHorario();
-                     // Valores padrão se não conseguir carregar
-                    document.querySelectorAll('.dia-btn').forEach(btn => {
-                        if (['segunda', 'terca', 'quarta', 'quinta', 'sexta'].includes(btn.dataset.dia)) {
-                            btn.classList.add('selecionado');
-                        }
-                    });
-                     document.getElementById('hora_entrada').value = '08:00';
-                     document.getElementById('hora_saida').value = '18:00';
-                     document.getElementById('almoco_inicio').value = '12:00';
-                     document.getElementById('almoco_fim').value = '13:00';
-
-                }
+            const horarioData = <?php echo isset($politicas['horario']) ? json_encode($politicas['horario']) : 'null'; ?>;
+            if (horarioData) {
+                const dias = horarioData.valor.split('|')[0].split(',');
+                dias.forEach(dia => {
+                    const btn = document.querySelector(`.dia-btn[data-dia="${dia}"]`);
+                    if (btn) btn.classList.add('selecionado');
+                });
+                
+                const horarios = horarioData.valor.split('|')[1].split(',');
+                document.getElementById('hora_entrada').value = horarios[0];
+                document.getElementById('hora_saida').value = horarios[1];
+                document.getElementById('almoco_inicio').value = horarios[2];
+                document.getElementById('almoco_fim').value = horarios[3];
             } else {
-                // Valores padrão e seleção padrão 'turno'
-                document.getElementById('tipo_config_horario').value = 'turno';
-                toggleTipoHorario();
+                // Valores padrão
                 document.querySelectorAll('.dia-btn').forEach(btn => {
                     if (['segunda', 'terca', 'quarta', 'quinta', 'sexta'].includes(btn.dataset.dia)) {
                         btn.classList.add('selecionado');
@@ -2054,81 +1812,39 @@ function abrirModal(tipo) {
         case 'homeoffice':
             modalTitulo.textContent = 'Editar Política de Home Office';
             politicaTipo.value = 'homeoffice';
+            camposHorario.style.display = 'none';
             camposHomeoffice.style.display = 'block';
+            camposVestimenta.style.display = 'none';
+            camposPadrao.style.display = 'none';
+            
             // Carregar valores existentes ou usar padrão
             const homeofficeData = <?php echo isset($politicas['homeoffice']) ? json_encode($politicas['homeoffice']) : 'null'; ?>;
-            document.querySelectorAll('#campos-homeoffice .dia-btn').forEach(b => b.classList.remove('selecionado'));
-            if (homeofficeData && homeofficeData !== 'null') {
-                 try {
-                    const dados = JSON.parse(homeofficeData);
-                    const dias = parseInt(dados.valor);
-                    document.querySelector(`.dia-btn[data-dias="${dias}"]`)?.classList.add('selecionado');
-                    document.getElementById('dias_homeoffice').value = dias;
-                 } catch(e) {
-                     console.error("Erro ao parsear dados de homeoffice:", e);
-                     // Valor padrão
-                     document.querySelector('.dia-btn[data-dias="2"]').classList.add('selecionado');
-                     document.getElementById('dias_homeoffice').value = '2';
-                 }
+            if (homeofficeData) {
+                const dias = parseInt(homeofficeData.valor);
+                document.querySelector(`.dia-btn[data-dias="${dias}"]`)?.classList.add('selecionado');
             } else {
-                // Valor padrão
+                // Valores padrão
                 document.querySelector('.dia-btn[data-dias="2"]').classList.add('selecionado');
-                document.getElementById('dias_homeoffice').value = '2';
             }
             break;
             
         case 'vestimenta':
             modalTitulo.textContent = 'Editar Código de Vestimenta';
             politicaTipo.value = 'vestimenta';
+            camposHorario.style.display = 'none';
+            camposHomeoffice.style.display = 'none';
             camposVestimenta.style.display = 'block';
+            camposPadrao.style.display = 'none';
+            
             // Carregar valores existentes ou usar padrão
             const vestimentaData = <?php echo isset($politicas['vestimenta']) ? json_encode($politicas['vestimenta']) : 'null'; ?>;
-            document.getElementById('titulo_vestimenta').value = '';
-            document.getElementById('descricao_vestimenta').value = '';
-            if (vestimentaData && vestimentaData !== 'null') {
-                 try {
-                    const dados = JSON.parse(vestimentaData);
-                    document.getElementById('titulo_vestimenta').value = dados.titulo || '';
-                    document.getElementById('descricao_vestimenta').value = dados.descricao || '';
-                 } catch(e) {
-                      console.error("Erro ao parsear dados de vestimenta:", e);
-                     // Valores padrão
-                     document.getElementById('titulo_vestimenta').value = 'Vestuário casual e profissional';
-                     document.getElementById('descricao_vestimenta').value = '';
-                 }
+            if (vestimentaData) {
+                document.getElementById('titulo_vestimenta').value = vestimentaData.titulo;
+                document.getElementById('descricao_vestimenta').value = vestimentaData.descricao;
             } else {
                 // Valores padrão
                 document.getElementById('titulo_vestimenta').value = 'Vestuário casual e profissional';
                 document.getElementById('descricao_vestimenta').value = '';
-            }
-            break;
-
-        default:
-            // Caso para outras políticas que usam campos padrão
-            modalTitulo.textContent = 'Editar Política'; // Título genérico
-            politicaTipo.value = tipo; // Define o tipo da política
-            camposPadrao.style.display = 'block';
-            
-            // Carregar valores existentes ou usar padrão
-            const politicaPadraoData = <?php echo json_encode($politicas); ?>;
-            if (politicaPadraoData && politicaPadraoData[tipo]) {
-                 try {
-                    const dados = politicaPadraoData[tipo];
-                    document.getElementById('titulo').value = dados.titulo || '';
-                    document.getElementById('descricao').value = dados.descricao || '';
-                    document.getElementById('valor').value = dados.valor || '';
-                 } catch(e) {
-                     console.error("Erro ao carregar dados de política padrão:", e);
-                     // Limpar campos se houver erro
-                     document.getElementById('titulo').value = '';
-                     document.getElementById('descricao').value = '';
-                     document.getElementById('valor').value = '';
-                 }
-            } else {
-                 // Limpar campos se não houver dados
-                 document.getElementById('titulo').value = '';
-                 document.getElementById('descricao').value = '';
-                 document.getElementById('valor').value = '';
             }
             break;
     }
@@ -2136,8 +1852,18 @@ function abrirModal(tipo) {
     modal.style.display = 'block';
 }
 
-// Event Listeners
-document.addEventListener('DOMContentLoaded', function() {
+// Fechar o modal quando clicar no X
+document.querySelector('.close').onclick = function() {
+    document.getElementById('modal').style.display = 'none';
+}
+
+// Fechar o modal quando clicar fora dele
+window.onclick = function(event) {
+    if (event.target.classList.contains('modal') || event.target.classList.contains('modal-banco')) {
+        event.target.style.display = 'none';
+    }
+}
+
 // Adicionar evento de clique para os botões de dia
 document.querySelectorAll('.dia-btn').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -2145,6 +1871,12 @@ document.querySelectorAll('.dia-btn').forEach(btn => {
         atualizarDiasSelecionados();
     });
 });
+
+function atualizarDiasSelecionados() {
+    const diasSelecionados = Array.from(document.querySelectorAll('.dia-btn.selecionado'))
+        .map(btn => btn.dataset.dia);
+    document.getElementById('dias_selecionados').value = diasSelecionados.join(',');
+}
 
 // Adicionar evento de clique para os botões de home office
 document.querySelectorAll('#campos-homeoffice .dia-btn').forEach(btn => {
@@ -2164,64 +1896,46 @@ document.getElementById('form-politica').addEventListener('submit', function(e) 
     document.getElementById('dias_homeoffice').value = diasHomeoffice;
 });
 
-    // Fechar modais ao clicar fora deles
-    window.onclick = function(event) {
-        if (event.target.classList.contains('modal') || event.target.classList.contains('modal-banco')) {
-            event.target.style.display = 'none';
-        }
-    }
-
-    // Atualizar dias selecionados antes do envio do formulário
-    document.getElementById('form-politica').addEventListener('submit', function(e) {
-        const tipo = document.getElementById('politica-tipo').value;
-        if (tipo === 'horario') {
-            atualizarDiasSelecionados();
-        }
-    });
-});
-
-function atualizarDiasSelecionados() {
-    const diasSelecionados = Array.from(document.querySelectorAll('.dia-btn.selecionado'))
-        .map(btn => btn.dataset.dia);
-    document.getElementById('dias_selecionados').value = diasSelecionados.join(',');
-}
-
-function toggleTipoHorario() {
-    const tipo = document.getElementById('tipo_config_horario').value;
-    const camposTurno = document.getElementById('campos-turno');
-    const camposPersonalizado = document.getElementById('campos-personalizado');
+// Funções para gerenciar bancos
+function editarBanco(id, nome, codigo) {
+    const modal = document.getElementById('modal-banco');
+    const form = document.getElementById('form-editar-banco');
     
-    if (tipo === 'turno') {
-        camposTurno.style.display = 'block';
-        camposPersonalizado.style.display = 'none';
-    } else {
-        camposTurno.style.display = 'none';
-        camposPersonalizado.style.display = 'block';
+    document.getElementById('banco_id').value = id;
+    document.getElementById('edit_banco_nome').value = nome;
+    document.getElementById('edit_banco_codigo').value = codigo;
+    
+    modal.style.display = 'block';
+}
+
+function excluirBanco(id) {
+    if (confirm('Tem certeza que deseja excluir este banco?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = `
+            <input type="hidden" name="banco_id" value="${id}">
+            <input type="hidden" name="excluir_banco" value="1">
+        `;
+        document.body.appendChild(form);
+        form.submit();
     }
 }
 
-// Atualizar campos quando um turno é selecionado
-document.getElementById('turno_id').addEventListener('change', function() {
-    const turnoId = this.value;
-    if (turnoId) {
-        // Fazer uma requisição AJAX para buscar os dados do turno
-        fetch(`get_turno.php?id=${turnoId}`)
-            .then(response => response.json())
-            .then(data => {
-                // Preencher os campos com os dados do turno
-                document.getElementById('hora_entrada_personalizado').value = data.hora_entrada;
-                document.getElementById('hora_saida_personalizado').value = data.hora_saida;
-                document.getElementById('almoco_inicio_personalizado').value = data.almoco_inicio;
-                document.getElementById('almoco_fim_personalizado').value = data.almoco_fim;
-                
-                // Selecionar os dias
-                const dias = data.dias_semana.split(',');
-                document.querySelectorAll('.dia-btn').forEach(btn => {
-                    btn.classList.toggle('selecionado', dias.includes(btn.dataset.dia));
-                });
-            });
+// Fechar o modal de banco
+document.querySelector('.modal-banco .close').onclick = function() {
+    document.getElementById('modal-banco').style.display = 'none';
+}
+
+// Fechar o modal quando clicar fora dele
+window.onclick = function(event) {
+    if (event.target.classList.contains('modal') || event.target.classList.contains('modal-banco')) {
+        event.target.style.display = 'none';
     }
-});
+}
+
+function fecharModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
 </script>
 </body>
 </html>

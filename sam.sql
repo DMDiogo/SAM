@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 31, 2025 at 07:42 PM
+-- Generation Time: Jun 01, 2025 at 12:03 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -515,24 +515,6 @@ CREATE TABLE `registros_ponto` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `turnos_trabalho`
---
-
-CREATE TABLE `turnos_trabalho` (
-  `id` int(11) NOT NULL,
-  `empresa_id` int(11) NOT NULL,
-  `nome` varchar(100) NOT NULL,
-  `dias_semana` varchar(100) NOT NULL,
-  `hora_entrada` time NOT NULL,
-  `hora_saida` time NOT NULL,
-  `almoco_inicio` time NOT NULL,
-  `almoco_fim` time NOT NULL,
-  `data_criacao` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
 --
 -- Indexes for dumped tables
 --
@@ -667,13 +649,6 @@ ALTER TABLE `registros_ponto`
   ADD KEY `data` (`data`);
 
 --
--- Indexes for table `turnos_trabalho`
---
-ALTER TABLE `turnos_trabalho`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `empresa_id` (`empresa_id`);
-
---
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -774,12 +749,6 @@ ALTER TABLE `registros_ponto`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `turnos_trabalho`
---
-ALTER TABLE `turnos_trabalho`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
 -- Constraints for dumped tables
 --
 
@@ -874,12 +843,6 @@ ALTER TABLE `politicas_trabalho`
 --
 ALTER TABLE `registros_ponto`
   ADD CONSTRAINT `registros_ponto_ibfk_1` FOREIGN KEY (`funcionario_id`) REFERENCES `funcionario` (`id_fun`);
-
---
--- Constraints for table `turnos_trabalho`
---
-ALTER TABLE `turnos_trabalho`
-  ADD CONSTRAINT `turnos_trabalho_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresa` (`id_empresa`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
