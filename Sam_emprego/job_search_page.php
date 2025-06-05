@@ -185,7 +185,6 @@ try {
             display: flex;
             gap: 10px;
             background-color: white;
-            border-radius: 15px;
             padding: 15px;
             box-shadow: var(--box-shadow);
         }
@@ -244,7 +243,7 @@ try {
                 <div class="settings-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3EB489" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1-2-2 2 2 0 0 1-2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                     </svg>
                 </div>
             </div>
@@ -349,20 +348,19 @@ try {
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
                 </div>
-                <input type="text" placeholder="Pesquisar vagas...">
+                <input type="text" id="searchInput" placeholder="Pesquisar vagas..." onkeyup="searchJobs()">
             </div>
-            <button class="search-button">Procurar</button>
+            <button class="search-button" onclick="searchJobs()">Procurar</button>
         </div>
 
-        <div class="job-listings">
+        <div class="job-listings" id="jobListings">
             <?php
             try {
-                // Buscar todas as vagas ativas
+                // Buscar todas as vagas
                 $stmt = $pdo->prepare("
                     SELECT v.*, e.nome as empresa_nome, e.logo as empresa_logo 
                     FROM vagas v 
-                    JOIN empresas_recrutamento e ON v.empresa_id = e.id 
-                    WHERE v.status = 'Aberta' 
+                    LEFT JOIN empresas_recrutamento e ON v.empresa_id = e.id 
                     ORDER BY v.data_publicacao DESC
                 ");
                 $stmt->execute();
@@ -435,13 +433,6 @@ try {
                                         ?>
                                     </div>
                                 <?php endif; ?>
-
-                                <?php if ($vaga['idioma']): ?>
-                                <div class="job-language">
-                                    <span class="icon icon-language"></span>
-                                    <?php echo htmlspecialchars($vaga['idioma']); ?>
-                                </div>
-                                <?php endif; ?>
                             </div>
                         </div>
                         <div class="job-actions">
@@ -491,6 +482,56 @@ try {
             
             // Adicionar evento de clique ao cabeçalho do filtro
             filterToggle.addEventListener('click', toggleDropdown);
+        });
+
+        // Função de pesquisa
+        function searchJobs() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const jobCards = document.querySelectorAll('.job-card');
+            let foundJobs = 0;
+
+            jobCards.forEach(card => {
+                const title = card.querySelector('.job-title').textContent.toLowerCase();
+                const company = card.querySelector('.job-company').textContent.toLowerCase();
+                const category = card.querySelector('.job-category')?.textContent.toLowerCase() || '';
+                const location = card.querySelector('.job-location')?.textContent.toLowerCase() || '';
+                
+                if (title.includes(searchTerm) || 
+                    company.includes(searchTerm) || 
+                    category.includes(searchTerm) || 
+                    location.includes(searchTerm) || 
+                    searchTerm === '') {
+                    card.style.display = 'block';
+                    foundJobs++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // Mostrar mensagem se nenhuma vaga for encontrada
+            const jobListings = document.getElementById('jobListings');
+            const existingNoResults = jobListings.querySelector('.no-results');
+            
+            if (foundJobs === 0) {
+                if (!existingNoResults) {
+                    const noResultsDiv = document.createElement('div');
+                    noResultsDiv.className = 'no-results';
+                    noResultsDiv.innerHTML = 'Nenhuma vaga encontrada para "' + document.getElementById('searchInput').value + '"';
+                    noResultsDiv.style.cssText = 'text-align: center; padding: 20px; color: #666; font-style: italic;';
+                    jobListings.appendChild(noResultsDiv);
+                }
+            } else {
+                if (existingNoResults) {
+                    existingNoResults.remove();
+                }
+            }
+        }
+
+        // Pesquisar ao pressionar Enter
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchJobs();
+            }
         });
     </script>
     <script src="../js/dropdown.js"></script>

@@ -91,13 +91,52 @@ try {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../all.css/emprego.css/emp_view.css">
+  <!-- Add SweetAlert2 CSS and JS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.0.19/dist/sweetalert2.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.0.19/dist/sweetalert2.all.min.js"></script>
   <style>
     .job-meta-icon svg {
       vertical-align: middle;
       margin-right: 8px;
       color: #666;
+    }
+    .status-buttons {
+      display: flex;
+      align-items: center;
+      gap: 35%;
+      margin-left:50%;
+    }
+    .apply-button {
+      margin-left:auto;
+      background-color:rgb(255, 255, 255);
+      transition: background-color 0.3s;
+    }
+    .apply-button:hover {
+      background-color: #359c77;
+      color:white;
+    }
+    .apply-button[type="submit"]:active {
+      background-color: #dc3545;
+    }
+    .apply-button.locked {
+      cursor: not-allowed;
+      position: relative;
+      padding-right: 40px;
+    }
+    .apply-button.locked::after {
+      content: "";
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 12px; /* reduced from 16px */
+      height: 12px; /* reduced from 16px */
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233EB489' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='11' width='18' height='11' rx='2' ry='2'%3E%3C/rect%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'%3E%3C/path%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: contain;
     }
     .job-meta-item {
       display: flex;
@@ -128,15 +167,8 @@ try {
     <div class="posting-container">
       <a href="job_search_page.php" class="back-link">← Voltar à lista de empregos</a>
 
-      <?php if (isset($_SESSION['mensagem_sucesso'])): ?>
-        <div class="alert alert-success">
-          <?php 
-          echo htmlspecialchars($_SESSION['mensagem_sucesso']);
-          unset($_SESSION['mensagem_sucesso']);
-          ?>
-        </div>
-      <?php endif; ?>
-
+      <!-- Remove the old success message div -->
+      
       <?php if (isset($_SESSION['mensagem_erro'])): ?>
         <div class="alert alert-danger">
           <?php 
@@ -152,19 +184,19 @@ try {
         
         <div class="status-buttons">
           <div class="status-tag <?php echo $statusClass; ?>"><?php echo $statusText; ?></div>
-          <?php if ($vaga['status'] === 'Aberta'): ?>
-            <?php if (isset($_SESSION['empresa_id'])): ?>
-              <button class="apply-button" disabled>Área exclusiva para candidatos</button>
-            <?php elseif (!isset($_SESSION['candidato_id'])): ?>
-              <a href="login.php" class="apply-button">Fazer login para se candidatar</a>
-            <?php elseif ($ja_candidatado): ?>
-              <button class="apply-button" disabled>Já candidatado</button>
-            <?php else: ?>
-              <form action="candidatar.php" method="POST" style="display: inline;">
-                <input type="hidden" name="vaga_id" value="<?php echo $vaga_id; ?>">
-                <button type="submit" class="apply-button">Candidatar-se</button>
-              </form>
-            <?php endif; ?>
+          <?php if (isset($_SESSION['empresa_id'])): ?>
+            <button class="apply-button" disabled>Exclusiva para candidatos</button>
+          <?php elseif (!isset($_SESSION['candidato_id'])): ?>
+            <a href="login.php" class="apply-button">Fazer login para se candidatar</a>
+          <?php elseif ($ja_candidatado): ?>
+            <button class="apply-button" disabled>Candidatado</button>
+          <?php elseif ($vaga['status'] === 'Fechada'): ?>
+            <button class="apply-button locked" disabled>Candidatar-se</button>
+          <?php else: ?>
+            <form action="candidatar.php" method="POST">
+              <input type="hidden" name="vaga_id" value="<?php echo $vaga_id; ?>">
+              <button type="submit" class="apply-button">Candidatar-se</button>
+            </form>
           <?php endif; ?>
         </div>
 
@@ -245,7 +277,21 @@ try {
           
           <?php if ($vaga['idioma']): ?>
           <div class="language-details">
-            <strong>Língua:</strong> <?php echo htmlspecialchars($vaga['idioma']); ?>
+            <strong>Língua:</strong> <?php 
+              $idiomas = explode('_', $vaga['idioma']);
+              $idiomas = array_map(function($idioma) {
+                  $map = [
+                      'portugues' => 'Português',
+                      'ingles' => 'Inglês',
+                      'frances' => 'Francês',
+                      'espanhol' => 'Espanhol',
+                      'alemao' => 'Alemão',
+                      'italiano' => 'Italiano'
+                  ];
+                  return $map[strtolower($idioma)] ?? ucfirst($idioma);
+              }, $idiomas);
+              echo htmlspecialchars(implode(' e ', $idiomas));
+            ?>
           </div>
           <?php endif; ?>
         </div>
@@ -306,6 +352,46 @@ try {
       </div>
     </div>
   </div>
+  <div id="popupMessage" class="popup-message"></div>
 </body>
+<script>
+function showSuccessMessage(message) {
+    Swal.fire({
+        text: message,
+        icon: 'success',
+        timer: 3000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+        toast: true,
+        position: 'top-end',
+        width: '300px',
+        padding: '0.5em',
+        customClass: {
+            popup: 'small-popup',
+            icon: 'small-icon'
+        }
+    });
+}
+
+// Add custom styles for SweetAlert
+const style = document.createElement('style');
+style.textContent = `
+    .small-popup {
+        font-size: 0.9rem !important;
+        padding: 0.6em !important;
+    }
+    .small-icon {
+        font-size: 1.2em !important;
+        margin: 0.3em !important;
+    }
+`;
+document.head.appendChild(style);
+
+// Check for success message in session
+<?php if (isset($_SESSION['mensagem_sucesso'])): ?>
+    showSuccessMessage(<?php echo json_encode($_SESSION['mensagem_sucesso']); ?>);
+    <?php unset($_SESSION['mensagem_sucesso']); ?>
+<?php endif; ?>
+</script>
 <script src="../js/dropdown.js"></script>
 </html>
