@@ -232,7 +232,7 @@
                 <h1 class="page-title">Minhas Vagas</h1>
                 <p class="page-subtitle">Gerencie e acompanhe suas vagas publicadas</p>
             </div>
-            <a href="criar_vaga.php" class="new-job-button">
+            <a href="registro_vagas.php" class="new-job-button">
                 <i class="fas fa-plus"></i>
                 <span>Criar Nova Vaga</span>
             </a>
@@ -337,13 +337,6 @@
                                         echo htmlspecialchars($tipos_contrato[$vaga['tipo_contrato']] ?? $vaga['tipo_contrato']); 
                                         ?>
                                     </div>
-                                <?php endif; ?>
-
-                                <?php if ($vaga['idioma']): ?>
-                                <div class="job-language">
-                                    <span class="icon icon-language"></span>
-                                    <?php echo htmlspecialchars($vaga['idioma']); ?>
-                                </div>
                                 <?php endif; ?>
                             </div>
                         </div>
