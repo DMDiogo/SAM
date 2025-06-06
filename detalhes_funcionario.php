@@ -7,13 +7,17 @@ include 'config.php';
 $id_fun = $_GET['id'];
 
 // Consulta SQL
-$sql = "SELECT num_mecanografico, nome, foto, bi, emissao_bi, validade_bi, 
-               data_nascimento, pais, morada, genero, num_agregados, 
-               contato_emergencia, nome_contato_emergencia, telemovel, email, estado, 
-               cargo, departamento, tipo_trabalhador, 
-               num_conta_bancaria, banco, iban, 
-               salario_base, num_ss, data_admissao 
-        FROM funcionario WHERE id_fun = ?";
+$sql = "SELECT f.num_mecanografico, f.nome, f.foto, f.bi, f.emissao_bi, f.validade_bi, 
+               f.data_nascimento, f.pais, f.morada, f.genero, f.num_agregados, 
+               f.contato_emergencia, f.nome_contato_emergencia, f.telemovel, f.email, f.estado, 
+               c.nome as cargo_nome, d.nome as departamento_nome, f.tipo_trabalhador, 
+               f.num_conta_bancaria, b.banco_nome, f.iban, 
+               f.salario_base, f.num_ss, f.data_admissao 
+        FROM funcionario f
+        LEFT JOIN cargos c ON f.cargo = c.id
+        LEFT JOIN departamentos d ON f.departamento = d.id
+        LEFT JOIN bancos_ativos b ON f.banco = b.banco_codigo
+        WHERE f.id_fun = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $id_fun);
 $stmt->execute();
@@ -259,8 +263,8 @@ if ($result->num_rows > 0) {
         <div class="secao n">
             <h2>Informações Profissionais</h2>
             <p><strong>Nº Mecanográfico:</strong> <?php echo $dados['num_mecanografico']; ?></p>
-            <p><strong>Cargo:</strong> <?php echo $dados['cargo']; ?></p>
-            <p><strong>Departamento:</strong> <?php echo $dados['departamento']; ?></p>
+            <p><strong>Departamento:</strong> <?php echo $dados['departamento_nome']; ?></p>
+            <p><strong>Cargo:</strong> <?php echo $dados['cargo_nome']; ?></p>
             <p><strong>Tipo:</strong> <?php echo $dados['tipo_trabalhador']; ?></p>
             <p><strong>Estado:</strong> <?php echo $dados['estado']; ?></p>
             <p><strong>Data de Admissão:</strong> <?php echo $dados['data_admissao']; ?></p>
@@ -270,7 +274,7 @@ if ($result->num_rows > 0) {
         <div class="secao o">
             <h2>Informações Bancárias</h2>
             <p><strong>Nº Conta:</strong> <?php echo $dados['num_conta_bancaria']; ?></p>
-            <p><strong>Banco:</strong> <?php echo $dados['banco']; ?></p>
+            <p><strong>Banco:</strong> <?php echo $dados['banco_nome']; ?></p>
             <p><strong>IBAN:</strong> <?php echo $dados['iban']; ?></p>
         </div>
 
@@ -283,7 +287,7 @@ if ($result->num_rows > 0) {
                     <i class="fas fa-folder"></i>
                 </div>
                 <p>Documentação do Funcionário</p>
-                <small>3 elementos</small>
+                <small id="docCount">0 elementos</small>
             </div>
             
             <div class="doc-icon">
@@ -291,7 +295,7 @@ if ($result->num_rows > 0) {
                     <i class="fas fa-clock"></i>
                 </div>
                 <p>Frequência e Pontualidade</p>
-                <small>0 elementos</small>
+                <small id="freqCount">0 elementos</small>
             </div>
             
             <div class="doc-icon">
@@ -299,7 +303,7 @@ if ($result->num_rows > 0) {
                     <i class="fas fa-file-alt"></i>
                 </div>
                 <p>Solicitações e Autorizações</p>
-                <small>0 elementos</small>
+                <small id="solicCount">0 elementos</small>
             </div>
             
             <div class="doc-icon">
@@ -307,7 +311,7 @@ if ($result->num_rows > 0) {
                     <i class="fas fa-folder-open"></i>
                 </div>
                 <p>Outros</p>
-                <small>0 elementos</small>
+                <small id="outrosCount">0 elementos</small>
             </div>
         </div>
     </div>
@@ -327,6 +331,24 @@ if ($result->num_rows > 0) {
         
         // Update every second
         setInterval(updateTime, 1000);
+
+        // Função para carregar a contagem de documentos
+        function loadDocumentCounts() {
+            const employeeId = <?php echo $id_fun; ?>;
+            
+            fetch(`get_document_counts.php?employeeId=${employeeId}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('docCount').textContent = `${data.documentacao || 0} ${data.documentacao === 1 ? 'documento' : 'documentos'}`;
+                    document.getElementById('freqCount').textContent = `${data.frequencia || 0} ${data.frequencia === 1 ? 'documento' : 'documentos'}`;
+                    document.getElementById('solicCount').textContent = `${data.solicitacoes || 0} ${data.solicitacoes === 1 ? 'documento' : 'documentos'}`;
+                    document.getElementById('outrosCount').textContent = `${data.outros || 0} ${data.outros === 1 ? 'documento' : 'documentos'}`;
+                })
+                .catch(error => console.error('Erro ao carregar contadores:', error));
+        }
+
+        // Carregar contadores quando a página carregar
+        document.addEventListener('DOMContentLoaded', loadDocumentCounts);
     </script>
 </body>
 </html>

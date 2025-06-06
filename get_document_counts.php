@@ -11,33 +11,36 @@ if (!isset($_SESSION['id_empresa'])) {
 $empresa_id = $_SESSION['id_empresa']; // Define $empresa_id a partir da sessão
 
 // Verifica se o ID do funcionário foi passado
-if (!isset($_GET['employeeId'])) {
-    echo json_encode([]);
-    exit;
-}
-
-$employeeId = $_GET['employeeId']; // ID do funcionário selecionado
-
-// Função para contar documentos em uma pasta para um funcionário específico
-function countDocuments($conn, $folder, $employeeId) {
-    $sql = "SELECT COUNT(*) as total FROM documentos WHERE folder = ? AND num_funcionario = ?";
+if (isset($_GET['employeeId'])) {
+    $employeeId = $_GET['employeeId'];
+    
+    // Consulta para contar documentos em cada pasta
+    $sql = "SELECT folder, COUNT(*) as count 
+            FROM documentos 
+            WHERE num_funcionario = ? 
+            GROUP BY folder";
+            
     $stmt = mysqli_prepare($conn, $sql);
-    mysqli_stmt_bind_param($stmt, 'si', $folder, $employeeId);
+    mysqli_stmt_bind_param($stmt, 'i', $employeeId);
     mysqli_stmt_execute($stmt);
     $result = mysqli_stmt_get_result($stmt);
-    $row = mysqli_fetch_assoc($result);
-    return $row['total'];
+    
+    // Inicializa o array com contagem zero para todas as pastas
+    $counts = [
+        'documentacao' => 0,
+        'frequencia' => 0,
+        'solicitacoes' => 0,
+        'outros' => 0
+    ];
+    
+    // Atualiza as contagens com os valores do banco
+    while ($row = mysqli_fetch_assoc($result)) {
+        $counts[$row['folder']] = $row['count'];
+    }
+    
+    // Retorna as contagens em formato JSON
+    echo json_encode($counts);
+} else {
+    echo json_encode([]);
 }
-
-// Contar documentos para cada pasta
-$documentCounts = [
-    'documentacao' => countDocuments($conn, 'documentacao', $employeeId),
-    'frequencia' => countDocuments($conn, 'frequencia', $employeeId),
-    'solicitacoes' => countDocuments($conn, 'solicitacoes', $employeeId),
-    'outros' => countDocuments($conn, 'outros', $employeeId),
-];
-
-// Retornar os contadores em formato JSON
-header('Content-Type: application/json');
-echo json_encode($documentCounts);
 ?>
