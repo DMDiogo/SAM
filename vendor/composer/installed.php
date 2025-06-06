@@ -4,6 +4,10 @@
         'pretty_version' => 'dev-master',
         'version' => 'dev-master',
         'reference' => '194ccbc03c998511a976c3dffeba0e3dba7db5c9',
+
+      'reference' => '63fac5ec87defc8b8b7bab452be25327abb7a308',
+
+      
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
