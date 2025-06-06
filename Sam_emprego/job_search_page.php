@@ -525,7 +525,6 @@ try {
                 searchJobs();
             }
         });
-
         // Função para aplicar os filtros
         function applyFilters() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
@@ -551,13 +550,13 @@ try {
                                     searchTerm === '';
                 
                 const matchesTipoTrabalho = tipoTrabalho === 'todos' || 
-                                          location.includes(tipoTrabalho.toLowerCase());
+                                          card.dataset.localizacao?.includes(tipoTrabalho);
                 
                 const matchesTipoContrato = tipoContrato === 'todos' || 
-                                          contract.includes(tipoContrato.toLowerCase());
+                                          card.dataset.tipoContrato?.includes(tipoContrato);
                 
-                const matchesFaixaSalarial = tipoContrato === 'todos' || 
-                                           checkSalaryRange(salary, faixaSalarial);
+                const matchesFaixaSalarial = faixaSalarial === 'todos' || 
+                                           checkSalaryRange(card.dataset.salarioMin, card.dataset.salarioMax, faixaSalarial);
                 
                 const matchesIdioma = idioma === 'todos' || 
                                     card.dataset.idioma?.includes(idioma);
@@ -591,24 +590,22 @@ try {
         }
 
         // Função para verificar a faixa salarial
-        function checkSalaryRange(salaryText, range) {
+        function checkSalaryRange(salarioMin, salarioMax, range) {
             if (range === 'todos') return true;
+            if (!salarioMin && !salarioMax) return false;
             
-            // Extrair o valor numérico do texto do salário
-            const salaryMatch = salaryText.match(/(\d+(?:\.\d+)?)/g);
-            if (!salaryMatch) return false;
-            
-            const salary = parseFloat(salaryMatch[0].replace('.', ''));
+            const min = salarioMin ? parseFloat(salarioMin) : 0;
+            const max = salarioMax ? parseFloat(salarioMax) : Infinity;
             
             switch(range) {
                 case '0-50000':
-                    return salary <= 50000;
+                    return max <= 50000;
                 case '50000-100000':
-                    return salary > 50000 && salary <= 100000;
+                    return min >= 50000 && max <= 100000;
                 case '100000-200000':
-                    return salary > 100000 && salary <= 200000;
+                    return min >= 100000 && max <= 200000;
                 case '200000+':
-                    return salary > 200000;
+                    return min >= 200000;
                 default:
                     return true;
             }
