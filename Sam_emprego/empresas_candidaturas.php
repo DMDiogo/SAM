@@ -60,161 +60,222 @@ try {
     <link rel="stylesheet" href="../all.css/emprego.css/emp_vagas.css">
     <link rel="stylesheet" href="../all.css/emprego.css/emp_search.css">
     <link rel="stylesheet" href="../all.css/emprego.css/emp_header.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background-color: #fafbfc;
             min-height: 100vh;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Poppins', sans-serif
+            color: #2d3748;
+            line-height: 1.6;
         }
 
         .candidaturas-container {
             max-width: 1200px;
-            margin: 30px auto;
-            padding: 20px;
+            margin: 0 auto;
+            padding: 40px 20px;
         }
 
-        .page-title {
-            text-align: center;
+        .page-header {
             margin-bottom: 40px;
-            color: #2c3e50;
+            text-align: center;
         }
 
-        .page-title h1 {
-            font-size: 2.5rem;
+        .page-header h1 {
+            font-size: 2.25rem;
             font-weight: 700;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, #3EB489, #2c8a66);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #1a202c;
+            margin-bottom: 8px;
+            letter-spacing: -0.025em;
         }
 
-        .page-title p {
-            color: #7f8c8d;
-            font-size: 1.1rem;
+        .page-header p {
+            color: #718096;
+            font-size: 1.125rem;
             font-weight: 400;
+        }
+
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .stat-card:hover {
+            box-shadow: 0 4px 12px rgba(62, 180, 137, 0.1);
+            border-color: #3EB489;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #3EB489;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            color: #718096;
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         .candidatura-card {
             background: white;
-            border-radius: 20px;
-            padding: 30px;
-            margin-bottom: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-            border: 1px solid rgba(62, 180, 137, 0.1);
-            transition: all 0.3s ease;
-            position: relative;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            margin-bottom: 24px;
             overflow: hidden;
-        }
-
-        .candidatura-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background: linear-gradient(90deg, #3EB489, #27ae60);
+            transition: all 0.2s ease;
         }
 
         .candidatura-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+            border-color: #3EB489;
         }
 
-        .candidatura-header {
+        .card-header {
+            padding: 24px 32px 20px;
+            border-bottom: 1px solid #f7fafc;
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #f8f9fa;
+            align-items: flex-start;
+            gap: 20px;
         }
 
-        .candidatura-header h2 {
-            color: #2c3e50;
-            font-size: 1.6rem;
-            font-weight: 600;
-            margin: 0;
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
             flex: 1;
         }
 
-        .status-badge {
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-size: 14px;
+        .card-title h3 {
+            color: #1a202c;
+            font-size: 1.25rem;
             font-weight: 600;
-            text-transform: capitalize;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            margin-left: 20px;
+            margin: 0;
+        }
+
+        .card-title .job-icon {
+            width: 20px;
+            height: 20px;
+            color: #3EB489;
+        }
+
+        .status-badge {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            white-space: nowrap;
+            border: 1px solid transparent;
         }
 
         .status-pendente { 
-            background: linear-gradient(135deg, #f39c12, #e67e22);
-            color: white;
+            background-color: #fef5e7;
+            color: #d69e2e;
+            border-color: #f6e05e;
         }
         .status-visualizada { 
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
+            background-color: #ebf8ff;
+            color: #3182ce;
+            border-color: #90cdf4;
         }
         .status-analise { 
-            background: linear-gradient(135deg, #9b59b6, #8e44ad);
-            color: white;
+            background-color: #faf5ff;
+            color: #805ad5;
+            border-color: #c4b5fd;
         }
         .status-entrevista { 
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            color: white;
+            background-color: #fff5f5;
+            color: #e53e3e;
+            border-color: #feb2b2;
         }
         .status-aprovado { 
-            background: linear-gradient(135deg, #27ae60, #229954);
-            color: white;
+            background-color: #f0fff4;
+            color: #38a169;
+            border-color: #9ae6b4;
         }
         .status-rejeitado { 
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            color: white;
+            background-color: #fff5f5;
+            color: #e53e3e;
+            border-color: #feb2b2;
         }
 
-        .candidato-info {
+        .card-content {
+            padding: 32px;
+        }
+
+        .candidate-summary {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 32px;
+            margin-bottom: 32px;
         }
 
-        .info-section {
-            background: #f8f9fa;
-            padding: 20px;
+        .info-group {
+            background: #f8fafc;
+            border: 1px solid #edf2f7;
             border-radius: 12px;
-            border-left: 4px solid #3EB489;
+            padding: 24px;
         }
 
-        .info-section h3 {
-            color: #2c3e50;
-            font-size: 1.1rem;
+        .info-group h4 {
+            color: #2d3748;
+            font-size: 1rem;
             font-weight: 600;
-            margin-bottom: 15px;
+            margin-bottom: 16px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
+        }
+
+        .info-group .section-icon {
+            width: 16px;
+            height: 16px;
+            color: #3EB489;
         }
 
         .info-item {
             margin-bottom: 12px;
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            gap: 12px;
+            align-items: start;
         }
 
-        .info-item strong {
-            color: #34495e;
-            font-weight: 600;
-            min-width: 100px;
-            flex-shrink: 0;
+        .info-item:last-child {
+            margin-bottom: 0;
         }
 
-        .info-item span {
-            color: #7f8c8d;
-            line-height: 1.5;
+        .info-label {
+            color: #718096;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: #2d3748;
+            font-size: 0.875rem;
+            word-break: break-word;
         }
 
         .curriculo-link {
@@ -222,128 +283,355 @@ try {
             align-items: center;
             gap: 8px;
             padding: 8px 16px;
-            background: linear-gradient(135deg, #3EB489, #27ae60);
+            background-color: #3EB489;
             color: white;
             text-decoration: none;
-            border-radius: 20px;
+            border-radius: 8px;
+            font-size: 0.875rem;
             font-weight: 500;
-            transition: all 0.3s ease;
-            font-size: 14px;
+            transition: all 0.2s ease;
         }
 
         .curriculo-link:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(62, 180, 137, 0.3);
+            background-color: #2d8a66;
             color: white;
             text-decoration: none;
+            transform: translateY(-1px);
+        }
+
+        .application-meta {
+            background: #f8fafc;
+            border: 1px solid #edf2f7;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .meta-icon {
+            width: 16px;
+            height: 16px;
+            color: #3EB489;
+        }
+
+        .meta-text {
+            color: #718096;
+            font-size: 0.875rem;
         }
 
         .actions {
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
-            padding-top: 20px;
-            border-top: 2px solid #f8f9fa;
-            justify-content: center;
+            padding-top: 24px;
+            border-top: 1px solid #f7fafc;
+            justify-content:center;
         }
 
-        .actions button {
-            padding: 12px 24px;
-            border: none;
+        .action-btn {
+            padding: 10px 20px;
+            border: 1px solid transparent;
             border-radius: 25px;
-            font-weight: 600;
+            font-size: 0.875rem;
+            font-weight: 500;
             cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 14px;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             gap: 8px;
-            min-width: 140px;
+            background: white;
+            min-width: 130px;
             justify-content: center;
         }
 
-        .actions button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        .action-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
-        .actions button:nth-child(1) {
-            background: linear-gradient(135deg, #3498db, #2980b9);
+        .btn-analyze {
+            border-color: #d69e2e;
+            color: #d69e2e;
+        }
+        .btn-analyze:hover {
+            background-color: #d69e2e;
             color: white;
         }
 
-        .actions button:nth-child(2) {
-            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+        .btn-interview {
+            border-color: #3182ce;
+            color: #3182ce;
+        }
+        .btn-interview:hover {
+            background-color: #3182ce;
             color: white;
         }
 
-        .actions button:nth-child(3) {
-            background: linear-gradient(135deg, #f39c12, #e67e22);
+        .btn-approve {
+            border-color: #3EB489;
+            color: #3EB489;
+        }
+        .btn-approve:hover {
+            background-color: #3EB489;
             color: white;
         }
 
-        .actions button:nth-child(4) {
-            background: linear-gradient(135deg, #27ae60, #229954);
-            color: white;
+        .btn-reject {
+            border-color: #e53e3e;
+            color: #e53e3e;
         }
-
-        .actions button:nth-child(5) {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        .btn-reject:hover {
+            background-color: #e53e3e;
             color: white;
         }
 
         .empty-state {
             text-align: center;
-            padding: 60px 20px;
+            padding: 80px 40px;
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
         }
 
-        .empty-state i {
-            font-size: 4rem;
-            color: #bdc3c7;
-            margin-bottom: 20px;
+        .empty-icon {
+            width: 64px;
+            height: 64px;
+            color: #cbd5e0;
+            margin: 0 auto 24px;
         }
 
         .empty-state h3 {
-            color: #2c3e50;
+            color: #2d3748;
             font-size: 1.5rem;
-            margin-bottom: 10px;
+            font-weight: 600;
+            margin-bottom: 12px;
         }
 
         .empty-state p {
-            color: #7f8c8d;
-            font-size: 1.1rem;
+            color: #718096;
+            font-size: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
         }
 
         @media (max-width: 768px) {
-            .candidatura-header {
+            .candidaturas-container {
+                padding: 20px 16px;
+            }
+
+            .page-header h1 {
+                font-size: 1.875rem;
+            }
+
+            .card-header {
+                padding: 20px 20px 16px;
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 15px;
+                gap: 12px;
             }
 
-            .status-badge {
-                margin-left: 0;
-                align-self: flex-start;
+            .card-content {
+                padding: 20px;
             }
 
-            .candidato-info {
+            .candidate-summary {
                 grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .info-item {
+                grid-template-columns: 1fr;
+                gap: 4px;
             }
 
             .actions {
                 flex-direction: column;
             }
 
-            .actions button {
+            .action-btn {
                 min-width: 100%;
             }
 
-            .page-title h1 {
-                font-size: 2rem;
+            .application-meta {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
             }
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            overflow-y: auto; /* Habilita scroll vertical */
+            padding: 20px 0; /* Adiciona padding vertical */
+        }
+
+        .modal-content {
+            position: relative;
+            background-color: #fff;
+            margin: 20px auto; /* Margem para não tocar os limites da tela */
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-height: none; /* Remove limite de altura */
+            overflow-y: visible; /* Remove overflow do conteúdo */
+        }
+
+        @media (max-width: 768px) {
+            .modal {
+                padding: 10px;
+            }
+            .modal-content {
+                margin: 10px auto;
+                padding: 20px;
+            }
+        }
+
+        .interview-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            color: #2d3748;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .interview-type-options {
+            display: flex;
+            gap: 15px;
+        }
+
+        .type-option {
+            flex: 1;
+            text-align: center;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .type-option.selected {
+            border-color: #3EB489;
+            background-color: #f0fff4;
+        }
+
+        .type-option i {
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: #3EB489;
+        }
+
+        .schedule-btn {
+            background-color: #3EB489;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .schedule-btn:hover {
+            background-color: #2d8a66;
+        }
+
+        #map {
+            height: 300px;
+            width: 100%;
+            margin-top: 10px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .map-container {
+            position: relative;
+        }
+        .coordinates-display {
+            margin-top: 12px;
+            padding: 12px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95em;
+            color: #2d3748;
+        }
+
+        .coordinates-display .label {
+            font-weight: 600;
+            color: #3EB489;
+            margin-bottom: 4px;
+        }
+
+        .coordinates-display .value {
+            font-family: monospace;
+            background: #fff;
+            padding: 6px 10px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            display: inline-block;
+            margin-top: 4px;
+        }
+
+        .address-input-container {
+            margin-top: 16px;
+        }
+
+        .address-input-container label {
+            display: block;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+
+        .address-input-container textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95em;
+            line-height: 1.5;
+            resize: vertical;
+            min-height: 80px;
+            transition: all 0.2s ease;
+        }
+
+        .address-input-container textarea:focus {
+            outline: none;
+            border-color: #3EB489;
+            box-shadow: 0 0 0 3px rgba(62, 180, 137, 0.1);
+        }
+
+        .address-input-container textarea::placeholder {
+            color: #a0aec0;
         }
     </style>
     <title>Candidaturas - SAM Emprego</title>
@@ -399,114 +687,200 @@ try {
     </header>
 
     <div class="candidaturas-container">
-        <div class="page-title">
+        <div class="page-header">
             <h1>Candidaturas Recebidas</h1>
-            <p>Gerencie todas as candidaturas para suas vagas em um só lugar</p>
+            <p>Gerencie e acompanhe todas as candidaturas para suas vagas</p>
         </div>
-        
+
         <?php if (isset($candidaturas) && !empty($candidaturas)): ?>
             <?php foreach ($candidaturas as $candidatura): ?>
-                <div class="candidatura-card">
-                    <div class="candidatura-header">
-                        <h2><i class="fas fa-briefcase"></i> <?php echo htmlspecialchars($candidatura['vaga_titulo']); ?></h2>
+                <div class="candidatura-card" data-candidatura-id="<?php echo $candidatura['id']; ?>">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fas fa-briefcase job-icon"></i>
+                            <h3><?php echo htmlspecialchars($candidatura['vaga_titulo']); ?></h3>
+                        </div>
                         <span class="status-badge status-<?php echo strtolower(str_replace([' ', 'ç'], ['', 'c'], $candidatura['status'])); ?>">
                             <?php echo htmlspecialchars($candidatura['status']); ?>
                         </span>
                     </div>
                     
-                    <div class="candidato-info">
-                        <div class="info-section">
-                            <h3><i class="fas fa-user"></i> Informações Pessoais</h3>
-                            <div class="info-item">
-                                <strong>Nome:</strong>
-                                <span><?php echo htmlspecialchars($candidatura['candidato_nome']); ?></span>
-                            </div>
-                            <div class="info-item">
-                                <strong>Email:</strong>
-                                <span><?php echo htmlspecialchars($candidatura['candidato_email']); ?></span>
-                            </div>
-                            <div class="info-item">
-                                <strong>Telefone:</strong>
-                                <span><?php echo htmlspecialchars($candidatura['candidato_telefone']); ?></span>
-                            </div>
-                            <div class="info-item">
-                                <strong>Nascimento:</strong>
-                                <span><?php echo htmlspecialchars($candidatura['candidato_data_nascimento_formatada'] ?? 'Não informado'); ?></span>
-                            </div>
-                            <div class="info-item">
-                                <strong>Endereço:</strong>
-                                <span><?php echo htmlspecialchars($candidatura['candidato_endereco'] ?? 'Não informado'); ?></span>
-                            </div>
+                    <div class="card-content">
+                        <div class="application-meta">
+                            <i class="fas fa-calendar meta-icon"></i>
+                            <span class="meta-text">
+                                Candidatura enviada em <?php echo date('d/m/Y às H:i', strtotime($candidatura['data_candidatura'])); ?>
+                            </span>
                         </div>
 
-                        <div class="info-section">
-                            <h3><i class="fas fa-graduation-cap"></i> Formação e Experiência</h3>
-                            <div class="info-item">
-                                <strong>Formação:</strong>
-                                <span><?php echo nl2br(htmlspecialchars($candidatura['candidato_formacao'] ?? 'Não informado')); ?></span>
-                            </div>
-                            <div class="info-item">
-                                <strong>Experiência:</strong>
-                                <span><?php echo nl2br(htmlspecialchars($candidatura['candidato_experiencia'] ?? 'Não informado')); ?></span>
-                            </div>
-                            <div class="info-item">
-                                <strong>Habilidades:</strong>
-                                <span><?php echo nl2br(htmlspecialchars($candidatura['candidato_habilidades'] ?? 'Não informado')); ?></span>
-                            </div>
-                        </div>
-
-                        <div class="info-section">
-                            <h3><i class="fas fa-calendar"></i> Informações da Candidatura</h3>
-                            <div class="info-item">
-                                <strong>Data:</strong>
-                                <span><?php echo date('d/m/Y H:i', strtotime($candidatura['data_candidatura'])); ?></span>
-                            </div>
-                            <?php if ($candidatura['candidato_curriculo']): ?>
+                        <div class="candidate-summary">
+                            <div class="info-group">
+                                <h4>
+                                    <i class="fas fa-user section-icon"></i>
+                                    Dados Pessoais
+                                </h4>
                                 <div class="info-item">
-                                    <strong>Currículo:</strong>
-                                    <span>
-                                        <a href="<?php echo htmlspecialchars($candidatura['candidato_curriculo']); ?>" 
-                                           target="_blank" class="curriculo-link">
-                                            <i class="fas fa-file-pdf"></i>
-                                            Ver Currículo
-                                        </a>
-                                    </span>
+                                    <span class="info-label">Nome:</span>
+                                    <span class="info-value" data-type="nome"><?php echo htmlspecialchars($candidatura['candidato_nome']); ?></span>
                                 </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
+                                <div class="info-item">
+                                    <span class="info-label">Email:</span>
+                                    <span class="info-value" data-type="email"><?php echo htmlspecialchars($candidatura['candidato_email']); ?></span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Telefone:</span>
+                                    <span class="info-value"><?php echo htmlspecialchars($candidatura['candidato_telefone'] ?? 'Não informado'); ?></span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Nascimento:</span>
+                                    <span class="info-value"><?php echo htmlspecialchars($candidatura['candidato_data_nascimento_formatada'] ?? 'Não informado'); ?></span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Endereço:</span>
+                                    <span class="info-value"><?php echo htmlspecialchars($candidatura['candidato_endereco'] ?? 'Não informado'); ?></span>
+                                </div>
+                            </div>
 
-                    <div class="actions">
-                        <button onclick="updateStatus(<?php echo $candidatura['id']; ?>, 'Visualizada')">
-                            <i class="fas fa-eye"></i> Marcar como vista
-                        </button>
-                        <button onclick="updateStatus(<?php echo $candidatura['id']; ?>, 'Em análise')">
-                            <i class="fas fa-search"></i> Em análise
-                        </button>
-                        <button onclick="updateStatus(<?php echo $candidatura['id']; ?>, 'Entrevista')">
-                            <i class="fas fa-comments"></i> Marcar entrevista
-                        </button>
-                        <button onclick="updateStatus(<?php echo $candidatura['id']; ?>, 'Aprovado')">
-                            <i class="fas fa-check"></i> Aprovar
-                        </button>
-                        <button onclick="updateStatus(<?php echo $candidatura['id']; ?>, 'Rejeitado')">
-                            <i class="fas fa-times"></i> Rejeitar
-                        </button>
+                            <div class="info-group">
+                                <h4>
+                                    <i class="fas fa-graduation-cap section-icon"></i>
+                                    Qualificações
+                                </h4>
+                                <div class="info-item">
+                                    <span class="info-label">Formação:</span>
+                                    <span class="info-value"><?php echo nl2br(htmlspecialchars($candidatura['candidato_formacao'] ?? 'Não informado')); ?></span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Experiência:</span>
+                                    <span class="info-value"><?php echo nl2br(htmlspecialchars($candidatura['candidato_experiencia'] ?? 'Não informado')); ?></span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Habilidades:</span>
+                                    <span class="info-value"><?php echo nl2br(htmlspecialchars($candidatura['candidato_habilidades'] ?? 'Não informado')); ?></span>
+                                </div>
+                                <?php if ($candidatura['candidato_curriculo']): ?>
+                                    <div class="info-item">
+                                        <span class="info-label">Currículo:</span>
+                                        <span class="info-value">
+                                            <a href="<?php echo htmlspecialchars($candidatura['candidato_curriculo']); ?>" 
+                                               target="_blank" class="curriculo-link">
+                                                <i class="fas fa-file-pdf"></i>
+                                                Visualizar Currículo
+                                            </a>
+                                        </span>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <div class="actions">
+                            <button class="action-btn btn-analyze" onclick="updateStatus(<?php echo $candidatura['id']; ?>, 'Em análise')">
+                                <i class="fas fa-search"></i> 
+                                Em análise
+                            </button>
+                            <button class="action-btn btn-interview" onclick="updateStatus(<?php echo $candidatura['id']; ?>, 'Entrevista')">
+                                <i class="fas fa-calendar-check"></i> 
+                                Agendar entrevista
+                            </button>
+                            <button class="action-btn btn-approve" onclick="updateStatus(<?php echo $candidatura['id']; ?>, 'Aprovado')">
+                                <i class="fas fa-check"></i> 
+                                Aprovar
+                            </button>
+                            <button class="action-btn btn-reject" onclick="updateStatus(<?php echo $candidatura['id']; ?>, 'Rejeitado')">
+                                <i class="fas fa-times"></i> 
+                                Rejeitar
+                            </button>
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
         <?php else: ?>
             <div class="empty-state">
-                <i class="fas fa-inbox"></i>
+                <i class="fas fa-inbox empty-icon"></i>
                 <h3>Nenhuma candidatura encontrada</h3>
-                <p>Você ainda não recebeu candidaturas para suas vagas publicadas.</p>
+                <p>Você ainda não recebeu candidaturas para suas vagas publicadas. Assim que alguém se candidatar, as informações aparecerão aqui.</p>
             </div>
         <?php endif; ?>
     </div>
 
+    <div id="interviewModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h2 style="margin-bottom: 20px;">Agendar Entrevista</h2>
+            <form class="interview-form" id="interviewForm" onsubmit="handleInterviewSubmit(event)">
+                <input type="hidden" id="candidaturaId" name="candidaturaId">
+                <input type="hidden" id="tipo" name="tipo" value="presencial">
+                
+                <div class="form-group">
+                    <label>Tipo de Entrevista</label>
+                    <div class="interview-type-options">
+                        <div class="type-option selected" data-type="presencial">
+                            <i class="fas fa-building"></i>
+                            <div>Presencial</div>
+                        </div>
+                        <div class="type-option" data-type="remota">
+                            <i class="fas fa-video"></i>
+                            <div>Remota (Online)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Data</label>
+                    <input type="date" id="entrevistaData" name="data" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Hora</label>
+                    <input type="time" id="entrevistaHora" name="hora" required>
+                </div>
+
+                <div class="form-group" id="localPresencial" style="display: none;">
+                    <label>Local da Entrevista</label>
+                    <div class="search-container" style="margin-bottom: 10px;">
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="searchInput" placeholder="Digite o endereço para buscar" style="flex: 1; padding: 8px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                            <button type="button" id="searchButton" style="padding: 8px 16px; background: #3EB489; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                                <i class="fas fa-search"></i> Buscar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="map-container">
+                        <div id="map"></div>
+                        <div class="coordinates-display">
+                            <div class="label">Localização Selecionada:</div>
+                            <div class="value" id="coordinates">Clique no mapa para selecionar a localização</div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="latitude" name="latitude">
+                    <input type="hidden" id="longitude" name="longitude">
+                    <div class="address-input-container">
+                        <label for="localInput">Endereço Completo:</label>
+                        <textarea name="local" id="localInput" placeholder="O endereço será preenchido automaticamente quando você selecionar uma localização no mapa ou buscar por endereço"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-group" id="linkRemoto" style="display: none;">
+                    <label>Link da Reunião</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="url" name="link" id="meetLinkInput" placeholder="Ex: https://meet.google.com/..." style="flex:1;">
+                        <button type="button" id="generateMeetBtn" style="background:#3EB489;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;">Gerar</button>
+                    </div>
+                    <div id="meetStatus" style="font-size:0.9em;color:#3EB489;margin-top:4px;"></div>
+                </div>
+
+                <button type="submit" class="schedule-btn">Confirmar Agendamento</button>
+            </form>
+        </div>
+    </div>
+
     <script>
     function updateStatus(candidaturaId, newStatus) {
-        if (confirm('Deseja alterar o status desta candidatura?')) {
+        if (newStatus === 'Entrevista') {
+            showInterviewModal(candidaturaId);
+            return;
+        }
+        if (confirm('Deseja alterar o status desta candidatura para "' + newStatus + '"?')) {
             fetch('update_candidatura_status.php', {
                 method: 'POST',
                 headers: {
@@ -519,12 +893,270 @@ try {
                 if (data.success) {
                     location.reload();
                 } else {
-                    alert('Erro ao atualizar status.');
+                    alert('Erro ao atualizar status: ' + (data.message || 'Erro desconhecido'));
                 }
+            })
+            .catch(error => {
+                alert('Erro ao processar a requisição: ' + error);
             });
+        }
+    }
+
+    const modal = document.getElementById('interviewModal');
+    const closeBtn = document.querySelector('.modal-close');
+    const typeOptions = document.querySelectorAll('.type-option');
+    const localPresencial = document.getElementById('localPresencial');
+    const linkRemoto = document.getElementById('linkRemoto');
+    let currentCandidaturaId = null;
+    let map;
+    let marker;
+
+    function showInterviewModal(candidaturaId) {
+        currentCandidaturaId = candidaturaId;
+        document.getElementById('candidaturaId').value = candidaturaId;
+        localPresencial.style.display = 'block';
+        linkRemoto.style.display = 'none';
+        modal.style.display = 'block';
+        
+        // Initialize map if not already initialized
+        if (!map) {
+            initMap();
+        }
+    }
+
+    function initMap() {
+        // Initialize the map centered on Brazil
+        map = L.map('map').setView([-15.7801, -47.9292], 4);
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Add click event to map
+        map.on('click', function(e) {
+            updateLocation(e.latlng.lat, e.latlng.lng);
+        });
+
+        // Add search functionality
+        const searchButton = document.getElementById('searchButton');
+        const searchInput = document.getElementById('searchInput');
+
+        searchButton.addEventListener('click', performSearch);
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                performSearch();
+            }
+        });
+
+        function performSearch() {
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            // Show loading state
+            searchButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
+            searchButton.disabled = true;
+
+            // Use Nominatim for geocoding
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        const result = data[0];
+                        const lat = parseFloat(result.lat);
+                        const lon = parseFloat(result.lon);
+                        
+                        // Update map view and location
+                        map.setView([lat, lon], 16);
+                        updateLocation(lat, lon);
+                    } else {
+                        alert('Endereço não encontrado. Por favor, tente novamente.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Erro ao buscar endereço. Por favor, tente novamente.');
+                })
+                .finally(() => {
+                    // Reset button state
+                    searchButton.innerHTML = '<i class="fas fa-search"></i> Buscar';
+                    searchButton.disabled = false;
+                });
+        }
+    }
+
+    function updateLocation(lat, lng) {
+        // Update hidden inputs
+        document.getElementById('latitude').value = lat;
+        document.getElementById('longitude').value = lng;
+        
+        // Update coordinates display with more detailed format
+        const latFormatted = lat.toFixed(6);
+        const lngFormatted = lng.toFixed(6);
+        document.getElementById('coordinates').textContent = `Latitude: ${latFormatted}° | Longitude: ${lngFormatted}°`;
+        
+        // Update or create marker
+        if (marker) {
+            marker.setLatLng([lat, lng]);
+        } else {
+            marker = L.marker([lat, lng]).addTo(map);
+        }
+        
+        // Reverse geocode to get address
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.display_name) {
+                    document.getElementById('localInput').value = data.display_name;
+                    document.getElementById('searchInput').value = data.display_name;
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    closeBtn.onclick = function() {
+        modal.style.display = 'none';
+        resetForm();
+    }
+
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = 'none';
+            resetForm();
+        }
+    }
+
+    typeOptions.forEach(option => {
+        option.addEventListener('click', () => {
+            typeOptions.forEach(opt => opt.classList.remove('selected'));
+            option.classList.add('selected');
+            
+            const type = option.dataset.type;
+            document.getElementById('tipo').value = type;
+            
+            if (type === 'presencial') {
+                localPresencial.style.display = 'block';
+                linkRemoto.style.display = 'none';
+            } else {
+                localPresencial.style.display = 'none';
+                linkRemoto.style.display = 'block';
+            }
+        });
+    });
+
+    function resetForm() {
+        document.getElementById('interviewForm').reset();
+        typeOptions.forEach(opt => opt.classList.remove('selected'));
+        localPresencial.style.display = 'none';
+        linkRemoto.style.display = 'none';
+        document.getElementById('coordinates').textContent = 'Clique no mapa para selecionar a localização';
+        document.getElementById('searchInput').value = '';
+        if (marker) {
+            map.removeLayer(marker);
+            marker = null;
+        }
+    }
+
+    const generateMeetBtn = document.getElementById('generateMeetBtn');
+    const meetLinkInput = document.getElementById('meetLinkInput');
+    const meetStatus = document.getElementById('meetStatus');
+    
+    if (generateMeetBtn) {
+        generateMeetBtn.addEventListener('click', async function() {
+            meetStatus.textContent = 'Gerando link do Google Meet...';
+            try {
+                // Coletar dados do formulário
+                const candidaturaId = document.getElementById('candidaturaId').value;
+                const candidaturaCard = document.querySelector(`.candidatura-card[data-candidatura-id="${candidaturaId}"]`);
+                
+                if (!candidaturaCard) {
+                    console.error('Card da candidatura não encontrado');
+                    meetStatus.textContent = 'Erro: Não foi possível encontrar os dados do candidato.';
+                    return;
+                }
+
+                const emailElement = candidaturaCard.querySelector('.info-value[data-type="email"]');
+                const nomeElement = candidaturaCard.querySelector('.info-value[data-type="nome"]');
+
+                if (!emailElement || !nomeElement) {
+                    console.error('Elementos de email ou nome não encontrados');
+                    meetStatus.textContent = 'Erro: Dados do candidato incompletos.';
+                    return;
+                }
+
+                const email = emailElement.textContent.trim();
+                const nome = nomeElement.textContent.trim();
+                const data = document.getElementById('entrevistaData').value;
+                const hora = document.getElementById('entrevistaHora').value;
+                const titulo = 'Entrevista de Emprego';
+                const duracao = 30;
+
+                if (!email || !data || !hora) {
+                    meetStatus.textContent = 'Preencha todos os campos obrigatórios.';
+                    return;
+                }
+
+                console.log('Enviando dados:', { nome, email, data, hora, titulo, duracao });
+
+                const response = await fetch('generate_meet_link.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nome, email, data, hora, titulo, duracao })
+                });
+
+                const result = await response.json();
+                console.log('Resposta do servidor:', result);
+
+                if (result.success) {
+                    meetLinkInput.value = result.meet_link;
+                    meetStatus.textContent = 'Link gerado com sucesso!';
+                } else if (result.auth_url) {
+                    meetStatus.innerHTML = 'É necessário autenticar com o Google. <a href="' + result.auth_url + '" target="_blank">Clique aqui para autenticar</a>.';
+                } else {
+                    meetStatus.textContent = 'Erro: ' + (result.message || 'Não foi possível gerar o link.');
+                }
+            } catch (e) {
+                console.error('Erro ao gerar link:', e);
+                meetStatus.textContent = 'Erro ao conectar ao servidor: ' + e.message;
+            }
+        });
+    }
+
+    async function handleInterviewSubmit(event) {
+        event.preventDefault();
+        
+        const form = event.target;
+        const formData = new FormData(form);
+        
+        // Debug: Log dos dados do formulário
+        console.log('Dados do formulário:');
+        for (let pair of formData.entries()) {
+            console.log(pair[0] + ': ' + pair[1]);
+        }
+        
+        try {
+            const response = await fetch('agendar_entrevista.php', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            console.log('Resposta do servidor:', data);
+            
+            if (data.success) {
+                alert('Entrevista agendada com sucesso!');
+                location.reload();
+            } else {
+                alert('Erro ao agendar entrevista: ' + (data.message || 'Erro desconhecido'));
+            }
+        } catch (error) {
+            console.error('Erro completo:', error);
+            alert('Erro ao processar a requisição: ' + error);
         }
     }
     </script>
     <script src="../js/dropdown.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </body>
 </html>

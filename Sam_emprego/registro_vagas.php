@@ -492,6 +492,18 @@ try {
       z-index: 1;
     }
     
+    .progress-indicator::after {
+      content: '';
+      position: absolute;
+      top: 15px;
+      left: 0;
+      width: var(--progress-width, 0%);
+      height: 2px;
+      background-color: var(--primary);
+      z-index: 1;
+      transition: width 0.3s ease;
+    }
+    
     .progress-step {
       display: flex;
       flex-direction: column;
@@ -520,6 +532,7 @@ try {
       color: var(--gray-500);
       text-align: center;
       font-weight: 500;
+      transition: all 0.3s ease;
     }
     
     .progress-step.active .step-circle {
@@ -536,6 +549,10 @@ try {
       background-color: var(--primary);
       border-color: var(--primary);
       color: white;
+    }
+    
+    .progress-step.completed .step-label {
+      color: var(--primary);
     }
     
     /* Field tooltip */
@@ -898,7 +915,59 @@ try {
   <script>
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('job-form');
+        const progressSteps = document.querySelectorAll('.progress-step');
+        const progressBar = document.querySelector('.progress-indicator');
         
+        // Function to check if a section is complete
+        function isSectionComplete(section) {
+            const requiredInputs = section.querySelectorAll('input[required], select[required], textarea[required]');
+            let isComplete = true;
+            
+            requiredInputs.forEach(input => {
+                if (!input.value.trim()) {
+                    isComplete = false;
+                }
+            });
+            
+            return isComplete;
+        }
+        
+        // Function to update progress
+        function updateProgress() {
+            const sections = document.querySelectorAll('.form-section');
+            let completedSections = 0;
+            
+            sections.forEach((section, index) => {
+                if (isSectionComplete(section)) {
+                    completedSections++;
+                    progressSteps[index].classList.add('completed');
+                    if (index < sections.length - 1) {
+                        progressSteps[index + 1].classList.add('active');
+                    }
+                } else {
+                    progressSteps[index].classList.remove('completed');
+                    if (index < sections.length - 1) {
+                        progressSteps[index + 1].classList.remove('active');
+                    }
+                }
+            });
+            
+            // Update progress bar width
+            const progressPercentage = (completedSections / sections.length) * 100;
+            progressBar.style.setProperty('--progress-width', `${progressPercentage}%`);
+        }
+        
+        // Add input event listeners to all form inputs
+        const formInputs = form.querySelectorAll('input, select, textarea');
+        formInputs.forEach(input => {
+            input.addEventListener('input', updateProgress);
+            input.addEventListener('change', updateProgress);
+        });
+        
+        // Initial progress check
+        updateProgress();
+        
+        // Form submission code
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             

@@ -197,12 +197,12 @@
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
                 </div>
-                <input type="text" placeholder="Pesquisar vagas...">
+                <input type="text" id="searchInput" placeholder="Pesquisar vagas..." onkeyup="searchJobs()">
             </div>
-            <button class="search-button">Procurar</button>
+            <button class="search-button" onclick="searchJobs()">Procurar</button>
         </div>
 
-        <div class="job-listings">
+        <div class="job-listings" id="jobListings">
             <?php
             if (isset($vagas) && !empty($vagas)) {
                 foreach ($vagas as $vaga) {
@@ -288,13 +288,6 @@
                                         ?>
                                     </div>
                                 <?php endif; ?>
-
-                                <?php if ($vaga['idioma']): ?>
-                                <div class="job-language">
-                                    <span class="icon icon-language"></span>
-                                    <?php echo htmlspecialchars($vaga['idioma']); ?>
-                                </div>
-                                <?php endif; ?>
                             </div>
                         </div>
                         <div class="job-actions">
@@ -341,6 +334,56 @@
             
             // Adicionar evento de clique ao cabeçalho do filtro
             filterToggle.addEventListener('click', toggleDropdown);
+        });
+
+        // Função de pesquisa
+        function searchJobs() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const jobCards = document.querySelectorAll('.job-card');
+            let foundJobs = 0;
+
+            jobCards.forEach(card => {
+                const title = card.querySelector('.job-title').textContent.toLowerCase();
+                const company = card.querySelector('.job-company').textContent.toLowerCase();
+                const category = card.querySelector('.job-category')?.textContent.toLowerCase() || '';
+                const location = card.querySelector('.job-location')?.textContent.toLowerCase() || '';
+                
+                if (title.includes(searchTerm) || 
+                    company.includes(searchTerm) || 
+                    category.includes(searchTerm) || 
+                    location.includes(searchTerm) || 
+                    searchTerm === '') {
+                    card.style.display = 'block';
+                    foundJobs++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // Mostrar mensagem se nenhuma vaga for encontrada
+            const jobListings = document.getElementById('jobListings');
+            const existingNoResults = jobListings.querySelector('.no-results');
+            
+            if (foundJobs === 0) {
+                if (!existingNoResults) {
+                    const noResultsDiv = document.createElement('div');
+                    noResultsDiv.className = 'no-results';
+                    noResultsDiv.innerHTML = 'Nenhuma vaga encontrada para "' + document.getElementById('searchInput').value + '"';
+                    noResultsDiv.style.cssText = 'text-align: center; padding: 20px; color: #666; font-style: italic;';
+                    jobListings.appendChild(noResultsDiv);
+                }
+            } else {
+                if (existingNoResults) {
+                    existingNoResults.remove();
+                }
+            }
+        }
+
+        // Pesquisar ao pressionar Enter
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchJobs();
+            }
         });
     </script>
     <script src="../js/dropdown.js"></script>

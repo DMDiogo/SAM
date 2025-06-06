@@ -1,24 +1,21 @@
 <?php
 session_start();
-if (!isset($_SESSION["empresa_id"])) {
-    die(json_encode(['success' => false, 'message' => 'Não autorizado']));
-}
-
 require_once 'config/database.php';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id']) && isset($_POST['status'])) {
-    try {
-        $stmt = $pdo->prepare("UPDATE candidaturas SET status = ? WHERE id = ? AND empresa_id = ?");
-        $success = $stmt->execute([
-            $_POST['status'],
-            $_POST['id'],
-            $_SESSION['empresa_id']
-        ]);
-        
-        echo json_encode(['success' => $success]);
-    } catch (PDOException $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+if (!isset($_SESSION["empresa_id"]) || !isset($_POST['id']) || !isset($_POST['status'])) {
+    echo json_encode(['success' => false, 'message' => 'Dados inválidos']);
+    exit;
+}
+
+try {
+    $stmt = $pdo->prepare("UPDATE candidaturas SET status = ? WHERE id = ? AND EXISTS (SELECT 1 FROM vagas WHERE id = candidaturas.vaga_id AND empresa_id = ?)");
+    $stmt->execute([$_POST['status'], $_POST['id'], $_SESSION['empresa_id']]);
+
+    if ($stmt->rowCount() > 0) {
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Candidatura não encontrada ou sem permissão']);
     }
-} else {
-    echo json_encode(['success' => false, 'message' => 'Requisição inválida']);
+} catch (PDOException $e) {
+    echo json_encode(['success' => false, 'message' => 'Erro ao atualizar: ' . $e->getMessage()]);
 }
