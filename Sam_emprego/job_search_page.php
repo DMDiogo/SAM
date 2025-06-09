@@ -165,15 +165,7 @@ try {
             padding: 0 20px;
         }
 
-        .search-container {
-            max-width: 1200px;
-            margin: 20px auto;
-            background-color: var(white);
-            border-radius: 15px;
-            overflow: hidden;
-            color: white;
-            transition: all 0.3s ease;
-        }
+        
 
         .search-container.collapsed {
             max-height: 80px;
