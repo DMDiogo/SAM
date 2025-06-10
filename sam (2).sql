@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 31, 2025 at 07:42 PM
--- Server version: 10.4.32-MariaDB
--- PHP Version: 8.2.12
+-- Tempo de geração: 10-Jun-2025 às 21:08
+-- Versão do servidor: 10.4.32-MariaDB
+-- versão do PHP: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -18,13 +18,13 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `sam`
+-- Banco de dados: `sam`
 --
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `adm`
+-- Estrutura da tabela `adm`
 --
 
 CREATE TABLE `adm` (
@@ -41,7 +41,7 @@ CREATE TABLE `adm` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 --
--- Dumping data for table `adm`
+-- Extraindo dados da tabela `adm`
 --
 
 INSERT INTO `adm` (`id_adm`, `nome`, `email`, `senha`, `telefone`, `cargo`, `departamento`, `matricula`, `data_admissao`, `nivel_acesso`) VALUES
@@ -50,7 +50,7 @@ INSERT INTO `adm` (`id_adm`, `nome`, `email`, `senha`, `telefone`, `cargo`, `dep
 (8, 'Freddy Teca', 'fr3ddyteca@gmail.com', '$2y$10$xIncaDUrTgBrFJfqipP4a.FuhwTXVg.lXb7K4chVAscRQwUGXghfK', 2147483647, NULL, NULL, NULL, NULL, NULL);
 
 --
--- Triggers `adm`
+-- Acionadores `adm`
 --
 DELIMITER $$
 CREATE TRIGGER `delete_adm_app` AFTER DELETE ON `adm` FOR EACH ROW BEGIN
@@ -81,7 +81,7 @@ DELIMITER ;
 -- --------------------------------------------------------
 
 --
--- Table structure for table `adm_sessions`
+-- Estrutura da tabela `adm_sessions`
 --
 
 CREATE TABLE `adm_sessions` (
@@ -93,17 +93,18 @@ CREATE TABLE `adm_sessions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `adm_sessions`
+-- Extraindo dados da tabela `adm_sessions`
 --
 
 INSERT INTO `adm_sessions` (`session_id`, `adm_id`, `user_agent`, `ip_address`, `last_activity`) VALUES
+('00ampdsta6nj29j8u62jadj94h', 3, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', '::1', '2025-06-09 22:07:11'),
 ('4hqrpp8lfbgvb13p9s0h4es7it', 4, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', '::1', '2025-05-30 23:26:10'),
 ('vv04n3d0n4pe7q54lhj4sc910m', 8, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', '::1', '2025-05-30 23:34:10');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `ausencias`
+-- Estrutura da tabela `ausencias`
 --
 
 CREATE TABLE `ausencias` (
@@ -122,7 +123,7 @@ CREATE TABLE `ausencias` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `bancos_ativos`
+-- Estrutura da tabela `bancos_ativos`
 --
 
 CREATE TABLE `bancos_ativos` (
@@ -134,7 +135,7 @@ CREATE TABLE `bancos_ativos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `bancos_ativos`
+-- Extraindo dados da tabela `bancos_ativos`
 --
 
 INSERT INTO `bancos_ativos` (`id`, `empresa_id`, `banco_nome`, `banco_codigo`, `ativo`) VALUES
@@ -151,12 +152,14 @@ INSERT INTO `bancos_ativos` (`id`, `empresa_id`, `banco_nome`, `banco_codigo`, `
 (13, 2, 'Banco Yetu', 'YETU', 0),
 (14, 2, 'Banco VTB África', 'VTB', 1),
 (15, 2, 'Banco Angolano de Investimentos (BAI)', 'BAI', 1),
-(17, 2, 'Banco de Poupança do Kimi', 'BPK', 0);
+(17, 2, 'Banco de Poupança do Kimi', 'BPK', 0),
+(18, 5, 'Banco Angolano de Investimentos (BAI)', 'BAI', 1),
+(19, 5, 'Banco Comercial Angolano (BCA)', 'BCA', 1);
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `beneficios`
+-- Estrutura da tabela `beneficios`
 --
 
 CREATE TABLE `beneficios` (
@@ -169,7 +172,7 @@ CREATE TABLE `beneficios` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `cargos`
+-- Estrutura da tabela `cargos`
 --
 
 CREATE TABLE `cargos` (
@@ -182,20 +185,19 @@ CREATE TABLE `cargos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `cargos`
+-- Extraindo dados da tabela `cargos`
 --
 
 INSERT INTO `cargos` (`id`, `nome`, `departamento_id`, `salario_base`, `empresa_id`, `created_at`) VALUES
 (1, 'Programador', 1, 333000.00, 2, '2025-05-30 21:03:34'),
 (2, 'Vendas', 2, 220000.00, 2, '2025-05-30 21:08:09'),
 (3, 'NNC', 3, 300000.00, 2, '2025-05-30 21:38:49'),
-(4, 'Programadores', 1, 50001.00, 2, '2025-05-30 22:07:48'),
-(5, 'Backend', 4, 222000.00, 2, '2025-05-30 22:22:15');
+(4, 'Programadores', 1, 50001.00, 2, '2025-05-30 22:07:48');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `configuracoes_seguranca`
+-- Estrutura da tabela `configuracoes_seguranca`
 --
 
 CREATE TABLE `configuracoes_seguranca` (
@@ -205,7 +207,7 @@ CREATE TABLE `configuracoes_seguranca` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `configuracoes_seguranca`
+-- Extraindo dados da tabela `configuracoes_seguranca`
 --
 
 INSERT INTO `configuracoes_seguranca` (`id`, `adm_id`, `dois_fatores`) VALUES
@@ -214,7 +216,7 @@ INSERT INTO `configuracoes_seguranca` (`id`, `adm_id`, `dois_fatores`) VALUES
 -- --------------------------------------------------------
 
 --
--- Table structure for table `departamentos`
+-- Estrutura da tabela `departamentos`
 --
 
 CREATE TABLE `departamentos` (
@@ -225,19 +227,19 @@ CREATE TABLE `departamentos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `departamentos`
+-- Extraindo dados da tabela `departamentos`
 --
 
 INSERT INTO `departamentos` (`id`, `nome`, `empresa_id`, `created_at`) VALUES
 (1, 'TI', 2, '2025-05-30 21:02:27'),
-(2, 'Marketings', 2, '2025-05-30 21:07:41'),
+(2, 'Marketing', 2, '2025-05-30 21:07:41'),
 (3, 'ORG', 2, '2025-05-30 21:12:58'),
-(4, 'TI2', 2, '2025-05-30 22:08:57');
+(6, 'Informática', 5, '2025-06-09 21:56:20');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `dispositivos_confiaveis`
+-- Estrutura da tabela `dispositivos_confiaveis`
 --
 
 CREATE TABLE `dispositivos_confiaveis` (
@@ -250,17 +252,18 @@ CREATE TABLE `dispositivos_confiaveis` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `dispositivos_confiaveis`
+-- Extraindo dados da tabela `dispositivos_confiaveis`
 --
 
 INSERT INTO `dispositivos_confiaveis` (`id`, `adm_id`, `user_agent`, `ip_address`, `data_criacao`, `ultimo_acesso`) VALUES
 (1, 4, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', '::1', '2025-05-30 15:02:19', '2025-05-31 15:30:44'),
-(4, 8, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', '::1', '2025-05-30 23:32:40', '2025-05-30 23:32:40');
+(4, 8, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', '::1', '2025-05-30 23:32:40', '2025-05-30 23:32:40'),
+(5, 3, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', '::1', '2025-06-02 13:16:25', '2025-06-06 22:12:16');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `documentos`
+-- Estrutura da tabela `documentos`
 --
 
 CREATE TABLE `documentos` (
@@ -277,7 +280,7 @@ CREATE TABLE `documentos` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `empresa`
+-- Estrutura da tabela `empresa`
 --
 
 CREATE TABLE `empresa` (
@@ -294,15 +297,16 @@ CREATE TABLE `empresa` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 --
--- Dumping data for table `empresa`
+-- Extraindo dados da tabela `empresa`
 --
 
 INSERT INTO `empresa` (`id_empresa`, `nome`, `nipc`, `endereco`, `email_corp`, `telefone`, `setor_atuacao`, `num_fun`, `data_cadastro`, `adm_id`) VALUES
 (2, 'Carvalho Lda', '18041959', 'rua Pedro de Castro Van-Dunem Loy, Casa 4, Vila Ecocampo', 'kienukimidecarvalho@gmail.com', '924135515', 'servicos', 1, '2025-05-27', 4),
-(4, 'Lil Teca SA', '12345', 'Nova Vida', 'fr3ddyteca@gmail.com', '975851987', 'tecnologia', 1, '2025-05-31', 8);
+(4, 'Lil Teca SA', '12345', 'Nova Vida', 'fr3ddyteca@gmail.com', '975851987', 'tecnologia', 1, '2025-05-31', 8),
+(5, 'Silvestre Luís', '124124', 'Angola', 'SAM1@gmail.com', '922608606', 'vestuario', 51, '2025-06-02', 3);
 
 --
--- Triggers `empresa`
+-- Acionadores `empresa`
 --
 DELIMITER $$
 CREATE TRIGGER `delete_empresa_app` AFTER DELETE ON `empresa` FOR EACH ROW BEGIN    
@@ -327,7 +331,7 @@ DELIMITER ;
 -- --------------------------------------------------------
 
 --
--- Table structure for table `falta`
+-- Estrutura da tabela `falta`
 --
 
 CREATE TABLE `falta` (
@@ -341,7 +345,7 @@ CREATE TABLE `falta` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `funcionario`
+-- Estrutura da tabela `funcionario`
 --
 
 CREATE TABLE `funcionario` (
@@ -376,15 +380,16 @@ CREATE TABLE `funcionario` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 --
--- Dumping data for table `funcionario`
+-- Extraindo dados da tabela `funcionario`
 --
 
 INSERT INTO `funcionario` (`id_fun`, `num_mecanografico`, `nome`, `foto`, `bi`, `emissao_bi`, `validade_bi`, `data_nascimento`, `pais`, `morada`, `genero`, `num_agregados`, `contato_emergencia`, `nome_contato_emergencia`, `telemovel`, `email`, `estado`, `cargo`, `departamento`, `tipo_trabalhador`, `num_conta_bancaria`, `banco`, `iban`, `salario_base`, `num_ss`, `data_admissao`, `empresa_id`, `status`) VALUES
 (1, 'EMP-0001', 'Kimi Carvalho', NULL, '32432432423', '2025-05-06', '2025-05-30', '2025-04-29', 'angola', 'rua Pedro de Castro Van-Dunem Loy, Casa 4, Vila Ecocampo', 'Masculino', 6, '', '', '924135515', 'kienukimidecarvalho@gmail.com', 'Ativo', 'Analista Financeiro', 'tecnologia', 'Temporário', '1111', 'BAI', '678786', 6666.00, '2432432432', '2025-05-28', 2, 'pendente_biometria'),
-(7, 'EMP-0002', 'Jorge Mundula', NULL, '32432432423322', '2025-05-05', '2025-06-05', '2025-05-06', 'angola', 'Fubu', 'Masculino', 2, '924135515', 'Kimi Carvalho', '924135515', 'jorgemundula@gmail.com', 'Ativo', '2', '2', 'Efetivo', '111111154234', 'BAI', '432432432425', 220000.00, '243243243243123123324', '2025-05-31', 2, 'pendente_biometria');
+(7, 'EMP-0002', 'Jorge Mundula', NULL, '32432432423322', '2025-05-05', '2025-06-05', '2025-05-06', 'angola', 'Fubu', 'Masculino', 2, '924135515', 'Kimi Carvalho', '924135515', 'jorgemundula@gmail.com', 'Ativo', '2', '2', 'Efetivo', '111111154234', 'BAI', '432432432425', 220000.00, '243243243243123123324', '2025-05-31', 2, 'pendente_biometria'),
+(8, 'EMP-0003', 'dadasd', NULL, '2312313', '2005-12-12', '2025-12-12', '1999-12-12', 'japao', 'Angola', 'Masculino', 1, '999999999', '12314124124', '999999999', 'maguinhomast2005@gmail.com', 'Ativo', '6', '5', 'Freelancer', '121212', '', '231313', 1000000.00, '13123123', '2025-06-02', 5, 'pendente_biometria');
 
 --
--- Triggers `funcionario`
+-- Acionadores `funcionario`
 --
 DELIMITER $$
 CREATE TRIGGER `delete_funcionario_app` AFTER DELETE ON `funcionario` FOR EACH ROW BEGIN
@@ -445,7 +450,7 @@ DELIMITER ;
 -- --------------------------------------------------------
 
 --
--- Table structure for table `log_atividades`
+-- Estrutura da tabela `log_atividades`
 --
 
 CREATE TABLE `log_atividades` (
@@ -457,7 +462,7 @@ CREATE TABLE `log_atividades` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `log_atividades`
+-- Extraindo dados da tabela `log_atividades`
 --
 
 INSERT INTO `log_atividades` (`id`, `adm_id`, `acao`, `ip_address`, `data_hora`) VALUES
@@ -466,12 +471,14 @@ INSERT INTO `log_atividades` (`id`, `adm_id`, `acao`, `ip_address`, `data_hora`)
 (3, 4, 'Login Efetuado', '::1', '2025-05-30 19:31:03'),
 (4, 4, 'Login Efetuado', '::1', '2025-05-30 19:32:59'),
 (5, 4, 'Login Efetuado', '::1', '2025-05-30 23:26:10'),
-(6, 8, 'Login Efetuado', '::1', '2025-05-30 23:34:06');
+(6, 8, 'Login Efetuado', '::1', '2025-05-30 23:34:06'),
+(7, 3, 'Login Efetuado', '::1', '2025-06-02 13:16:53'),
+(8, 3, 'Login Efetuado', '::1', '2025-06-09 22:07:11');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `politicas_trabalho`
+-- Estrutura da tabela `politicas_trabalho`
 --
 
 CREATE TABLE `politicas_trabalho` (
@@ -487,7 +494,7 @@ CREATE TABLE `politicas_trabalho` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `redefinicao_senha`
+-- Estrutura da tabela `redefinicao_senha`
 --
 
 CREATE TABLE `redefinicao_senha` (
@@ -500,7 +507,7 @@ CREATE TABLE `redefinicao_senha` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `registros_ponto`
+-- Estrutura da tabela `registros_ponto`
 --
 
 CREATE TABLE `registros_ponto` (
@@ -515,44 +522,26 @@ CREATE TABLE `registros_ponto` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
 --
--- Table structure for table `turnos_trabalho`
---
-
-CREATE TABLE `turnos_trabalho` (
-  `id` int(11) NOT NULL,
-  `empresa_id` int(11) NOT NULL,
-  `nome` varchar(100) NOT NULL,
-  `dias_semana` varchar(100) NOT NULL,
-  `hora_entrada` time NOT NULL,
-  `hora_saida` time NOT NULL,
-  `almoco_inicio` time NOT NULL,
-  `almoco_fim` time NOT NULL,
-  `data_criacao` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Indexes for dumped tables
+-- Índices para tabelas despejadas
 --
 
 --
--- Indexes for table `adm`
+-- Índices para tabela `adm`
 --
 ALTER TABLE `adm`
   ADD PRIMARY KEY (`id_adm`),
   ADD UNIQUE KEY `email_UNIQUE` (`email`);
 
 --
--- Indexes for table `adm_sessions`
+-- Índices para tabela `adm_sessions`
 --
 ALTER TABLE `adm_sessions`
   ADD PRIMARY KEY (`session_id`),
   ADD UNIQUE KEY `unique_session` (`adm_id`,`user_agent`,`ip_address`);
 
 --
--- Indexes for table `ausencias`
+-- Índices para tabela `ausencias`
 --
 ALTER TABLE `ausencias`
   ADD PRIMARY KEY (`id`),
@@ -560,21 +549,21 @@ ALTER TABLE `ausencias`
   ADD KEY `empresa_id` (`empresa_id`);
 
 --
--- Indexes for table `bancos_ativos`
+-- Índices para tabela `bancos_ativos`
 --
 ALTER TABLE `bancos_ativos`
   ADD PRIMARY KEY (`id`),
   ADD KEY `empresa_id` (`empresa_id`);
 
 --
--- Indexes for table `beneficios`
+-- Índices para tabela `beneficios`
 --
 ALTER TABLE `beneficios`
   ADD PRIMARY KEY (`id_beneficio`),
   ADD KEY `fk_beneficios_funcionario1_idx` (`fun_id`);
 
 --
--- Indexes for table `cargos`
+-- Índices para tabela `cargos`
 --
 ALTER TABLE `cargos`
   ADD PRIMARY KEY (`id`),
@@ -582,35 +571,35 @@ ALTER TABLE `cargos`
   ADD KEY `empresa_id` (`empresa_id`);
 
 --
--- Indexes for table `configuracoes_seguranca`
+-- Índices para tabela `configuracoes_seguranca`
 --
 ALTER TABLE `configuracoes_seguranca`
   ADD PRIMARY KEY (`id`),
   ADD KEY `adm_id` (`adm_id`);
 
 --
--- Indexes for table `departamentos`
+-- Índices para tabela `departamentos`
 --
 ALTER TABLE `departamentos`
   ADD PRIMARY KEY (`id`),
   ADD KEY `empresa_id` (`empresa_id`);
 
 --
--- Indexes for table `dispositivos_confiaveis`
+-- Índices para tabela `dispositivos_confiaveis`
 --
 ALTER TABLE `dispositivos_confiaveis`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_dispositivo` (`adm_id`,`user_agent`,`ip_address`);
 
 --
--- Indexes for table `documentos`
+-- Índices para tabela `documentos`
 --
 ALTER TABLE `documentos`
   ADD PRIMARY KEY (`id_documento`),
   ADD KEY `num_funcionario` (`num_funcionario`);
 
 --
--- Indexes for table `empresa`
+-- Índices para tabela `empresa`
 --
 ALTER TABLE `empresa`
   ADD PRIMARY KEY (`id_empresa`,`adm_id`),
@@ -618,14 +607,14 @@ ALTER TABLE `empresa`
   ADD KEY `fk_empresa_adm_idx` (`adm_id`);
 
 --
--- Indexes for table `falta`
+-- Índices para tabela `falta`
 --
 ALTER TABLE `falta`
   ADD PRIMARY KEY (`id_falta`),
   ADD KEY `fk_falta_funcionario1_idx` (`fun_id`);
 
 --
--- Indexes for table `funcionario`
+-- Índices para tabela `funcionario`
 --
 ALTER TABLE `funcionario`
   ADD PRIMARY KEY (`id_fun`),
@@ -638,27 +627,27 @@ ALTER TABLE `funcionario`
   ADD KEY `empresa_id` (`empresa_id`);
 
 --
--- Indexes for table `log_atividades`
+-- Índices para tabela `log_atividades`
 --
 ALTER TABLE `log_atividades`
   ADD PRIMARY KEY (`id`),
   ADD KEY `adm_id` (`adm_id`);
 
 --
--- Indexes for table `politicas_trabalho`
+-- Índices para tabela `politicas_trabalho`
 --
 ALTER TABLE `politicas_trabalho`
   ADD PRIMARY KEY (`id`),
   ADD KEY `empresa_id` (`empresa_id`);
 
 --
--- Indexes for table `redefinicao_senha`
+-- Índices para tabela `redefinicao_senha`
 --
 ALTER TABLE `redefinicao_senha`
   ADD PRIMARY KEY (`id`);
 
 --
--- Indexes for table `registros_ponto`
+-- Índices para tabela `registros_ponto`
 --
 ALTER TABLE `registros_ponto`
   ADD PRIMARY KEY (`id`),
@@ -667,219 +656,200 @@ ALTER TABLE `registros_ponto`
   ADD KEY `data` (`data`);
 
 --
--- Indexes for table `turnos_trabalho`
---
-ALTER TABLE `turnos_trabalho`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `empresa_id` (`empresa_id`);
-
---
--- AUTO_INCREMENT for dumped tables
+-- AUTO_INCREMENT de tabelas despejadas
 --
 
 --
--- AUTO_INCREMENT for table `adm`
+-- AUTO_INCREMENT de tabela `adm`
 --
 ALTER TABLE `adm`
   MODIFY `id_adm` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
--- AUTO_INCREMENT for table `ausencias`
+-- AUTO_INCREMENT de tabela `ausencias`
 --
 ALTER TABLE `ausencias`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `bancos_ativos`
+-- AUTO_INCREMENT de tabela `bancos_ativos`
 --
 ALTER TABLE `bancos_ativos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
--- AUTO_INCREMENT for table `beneficios`
+-- AUTO_INCREMENT de tabela `beneficios`
 --
 ALTER TABLE `beneficios`
   MODIFY `id_beneficio` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `cargos`
+-- AUTO_INCREMENT de tabela `cargos`
 --
 ALTER TABLE `cargos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
--- AUTO_INCREMENT for table `configuracoes_seguranca`
+-- AUTO_INCREMENT de tabela `configuracoes_seguranca`
 --
 ALTER TABLE `configuracoes_seguranca`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
--- AUTO_INCREMENT for table `departamentos`
+-- AUTO_INCREMENT de tabela `departamentos`
 --
 ALTER TABLE `departamentos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
--- AUTO_INCREMENT for table `dispositivos_confiaveis`
+-- AUTO_INCREMENT de tabela `dispositivos_confiaveis`
 --
 ALTER TABLE `dispositivos_confiaveis`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
--- AUTO_INCREMENT for table `documentos`
+-- AUTO_INCREMENT de tabela `documentos`
 --
 ALTER TABLE `documentos`
   MODIFY `id_documento` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `empresa`
+-- AUTO_INCREMENT de tabela `empresa`
 --
 ALTER TABLE `empresa`
-  MODIFY `id_empresa` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id_empresa` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
--- AUTO_INCREMENT for table `falta`
+-- AUTO_INCREMENT de tabela `falta`
 --
 ALTER TABLE `falta`
   MODIFY `id_falta` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `funcionario`
+-- AUTO_INCREMENT de tabela `funcionario`
 --
 ALTER TABLE `funcionario`
-  MODIFY `id_fun` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id_fun` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
--- AUTO_INCREMENT for table `log_atividades`
+-- AUTO_INCREMENT de tabela `log_atividades`
 --
 ALTER TABLE `log_atividades`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
--- AUTO_INCREMENT for table `politicas_trabalho`
+-- AUTO_INCREMENT de tabela `politicas_trabalho`
 --
 ALTER TABLE `politicas_trabalho`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `redefinicao_senha`
+-- AUTO_INCREMENT de tabela `redefinicao_senha`
 --
 ALTER TABLE `redefinicao_senha`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `registros_ponto`
+-- AUTO_INCREMENT de tabela `registros_ponto`
 --
 ALTER TABLE `registros_ponto`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `turnos_trabalho`
---
-ALTER TABLE `turnos_trabalho`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- Constraints for dumped tables
+-- Restrições para despejos de tabelas
 --
 
 --
--- Constraints for table `adm_sessions`
+-- Limitadores para a tabela `adm_sessions`
 --
 ALTER TABLE `adm_sessions`
   ADD CONSTRAINT `adm_sessions_ibfk_1` FOREIGN KEY (`adm_id`) REFERENCES `adm` (`id_adm`) ON DELETE CASCADE;
 
 --
--- Constraints for table `ausencias`
+-- Limitadores para a tabela `ausencias`
 --
 ALTER TABLE `ausencias`
   ADD CONSTRAINT `ausencias_ibfk_1` FOREIGN KEY (`funcionario_id`) REFERENCES `funcionario` (`id_fun`),
   ADD CONSTRAINT `ausencias_ibfk_2` FOREIGN KEY (`empresa_id`) REFERENCES `empresa` (`id_empresa`);
 
 --
--- Constraints for table `bancos_ativos`
+-- Limitadores para a tabela `bancos_ativos`
 --
 ALTER TABLE `bancos_ativos`
   ADD CONSTRAINT `bancos_ativos_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresa` (`id_empresa`);
 
 --
--- Constraints for table `beneficios`
+-- Limitadores para a tabela `beneficios`
 --
 ALTER TABLE `beneficios`
   ADD CONSTRAINT `beneficios_ibfk_1` FOREIGN KEY (`fun_id`) REFERENCES `funcionario` (`id_fun`) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 --
--- Constraints for table `cargos`
+-- Limitadores para a tabela `cargos`
 --
 ALTER TABLE `cargos`
   ADD CONSTRAINT `cargos_ibfk_1` FOREIGN KEY (`departamento_id`) REFERENCES `departamentos` (`id`),
   ADD CONSTRAINT `cargos_ibfk_2` FOREIGN KEY (`empresa_id`) REFERENCES `empresa` (`id_empresa`);
 
 --
--- Constraints for table `configuracoes_seguranca`
+-- Limitadores para a tabela `configuracoes_seguranca`
 --
 ALTER TABLE `configuracoes_seguranca`
   ADD CONSTRAINT `configuracoes_seguranca_ibfk_1` FOREIGN KEY (`adm_id`) REFERENCES `adm` (`id_adm`) ON DELETE CASCADE;
 
 --
--- Constraints for table `departamentos`
+-- Limitadores para a tabela `departamentos`
 --
 ALTER TABLE `departamentos`
   ADD CONSTRAINT `departamentos_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresa` (`id_empresa`);
 
 --
--- Constraints for table `dispositivos_confiaveis`
+-- Limitadores para a tabela `dispositivos_confiaveis`
 --
 ALTER TABLE `dispositivos_confiaveis`
   ADD CONSTRAINT `dispositivos_confiaveis_ibfk_1` FOREIGN KEY (`adm_id`) REFERENCES `adm` (`id_adm`) ON DELETE CASCADE;
 
 --
--- Constraints for table `documentos`
+-- Limitadores para a tabela `documentos`
 --
 ALTER TABLE `documentos`
   ADD CONSTRAINT `documentos_ibfk_1` FOREIGN KEY (`num_funcionario`) REFERENCES `funcionario` (`id_fun`) ON DELETE CASCADE;
 
 --
--- Constraints for table `empresa`
+-- Limitadores para a tabela `empresa`
 --
 ALTER TABLE `empresa`
   ADD CONSTRAINT `fk_empresa_adm` FOREIGN KEY (`adm_id`) REFERENCES `adm` (`id_adm`) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 --
--- Constraints for table `falta`
+-- Limitadores para a tabela `falta`
 --
 ALTER TABLE `falta`
   ADD CONSTRAINT `falta_ibfk_1` FOREIGN KEY (`fun_id`) REFERENCES `funcionario` (`id_fun`) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 --
--- Constraints for table `funcionario`
+-- Limitadores para a tabela `funcionario`
 --
 ALTER TABLE `funcionario`
   ADD CONSTRAINT `funcionario_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresa` (`id_empresa`) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 --
--- Constraints for table `log_atividades`
+-- Limitadores para a tabela `log_atividades`
 --
 ALTER TABLE `log_atividades`
   ADD CONSTRAINT `log_atividades_ibfk_1` FOREIGN KEY (`adm_id`) REFERENCES `adm` (`id_adm`) ON DELETE CASCADE;
 
 --
--- Constraints for table `politicas_trabalho`
+-- Limitadores para a tabela `politicas_trabalho`
 --
 ALTER TABLE `politicas_trabalho`
   ADD CONSTRAINT `politicas_trabalho_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresa` (`id_empresa`);
 
 --
--- Constraints for table `registros_ponto`
+-- Limitadores para a tabela `registros_ponto`
 --
 ALTER TABLE `registros_ponto`
   ADD CONSTRAINT `registros_ponto_ibfk_1` FOREIGN KEY (`funcionario_id`) REFERENCES `funcionario` (`id_fun`);
-
---
--- Constraints for table `turnos_trabalho`
---
-ALTER TABLE `turnos_trabalho`
-  ADD CONSTRAINT `turnos_trabalho_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresa` (`id_empresa`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

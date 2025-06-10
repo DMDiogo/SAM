@@ -255,7 +255,7 @@ function getRealIP() {
             <select class="nav-select">
                 <option>sam</option>
             </select>
-            <ul class="nav-menu">           
+            <ul class="nav-menu">
                 <a href="conf.sistema.php"><li>Configurações do Sistema</li></a>
                 <a href="perfil_adm.php"><li class="active">Perfil do Usuário</li></a>
                 <a href="seguranca.php"><li>Segurança</li></a>
@@ -263,7 +263,7 @@ function getRealIP() {
                 <a href="rh_config.php"><li>Configurações de RH</li></a>
             </ul>
         </div>
-        
+
         <div class="main-content">
             <div class="profile-card">
                 <div class="profile-header">
@@ -276,42 +276,42 @@ function getRealIP() {
                 </div>
 
                 <form id="perfilForm">
-                    <div class="profile-details">
-                        <div class="detail-section">
-                            <h3>Informações Pessoais</h3>
-                            <div class="detail-item">
+                <div class="profile-details">
+                    <div class="detail-section">
+                        <h3>Informações Pessoais</h3>
+                        <div class="detail-item">
                                 <label for="nome">Nome Completo</label>
                                 <input type="text" id="nome" name="nome" value="<?php echo htmlspecialchars($admin['nome']); ?>" required>
-                            </div>
-                            <div class="detail-item">
+                        </div>
+                        <div class="detail-item">
                                 <label for="email">Email</label>
                                 <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($admin['email']); ?>" required>
-                            </div>
-                            <div class="detail-item">
+                        </div>
+                        <div class="detail-item">
                                 <label for="telefone">Telefone</label>
                                 <input type="tel" id="telefone" name="telefone" value="<?php echo htmlspecialchars($admin['telefone']); ?>">
-                            </div>
-                            <div class="detail-item">
+                        </div>
+                        <div class="detail-item">
                                 <label for="data_admissao">Data de Admissão</label>
                                 <input type="date" id="data_admissao" name="data_admissao" value="<?php echo htmlspecialchars($admin['data_admissao']); ?>">
-                            </div>
                         </div>
+                    </div>
 
-                        <div class="detail-section">
-                            <h3>Informações Profissionais</h3>
-                            <div class="detail-item">
+                    <div class="detail-section">
+                        <h3>Informações Profissionais</h3>
+                        <div class="detail-item">
                                 <label for="matricula">Matrícula</label>
                                 <input type="text" id="matricula" name="matricula" value="<?php echo htmlspecialchars($admin['matricula']); ?>">
-                            </div>
-                            <div class="detail-item">
+                        </div>
+                        <div class="detail-item">
                                 <label for="cargo">Cargo</label>
                                 <input type="text" id="cargo" name="cargo" value="<?php echo htmlspecialchars($admin['cargo']); ?>">
-                            </div>
-                            <div class="detail-item">
+                        </div>
+                        <div class="detail-item">
                                 <label for="departamento">Departamento</label>
                                 <input type="text" id="departamento" name="departamento" value="<?php echo htmlspecialchars($admin['departamento']); ?>">
-                            </div>
-                            <div class="detail-item">
+                        </div>
+                        <div class="detail-item">
                                 <label for="nivel_acesso">Nível de Acesso</label>
                                 <div style="position: relative;">
                                     <select id="nivel_acesso" name="nivel_acesso" disabled style="padding-right: 40px;">
@@ -319,19 +319,19 @@ function getRealIP() {
                                     </select>
                                     <i class="fas fa-lock" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #dc3545;"></i>
                                 </div>
-                            </div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="profile-actions">
+                <div class="profile-actions">
                         <button type="submit" class="btn-primary">Salvar Alterações</button>
-                    </div>
+                </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <script src="../js/theme.js"></script>
+        <script src="../js/theme.js"></script>
     <script>
     document.getElementById('perfilForm').addEventListener('submit', function(e) {
         e.preventDefault();

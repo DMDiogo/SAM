@@ -12,6 +12,28 @@ if (!isset($conn)) {
     die("Erro: Conexão com o banco de dados não estabelecida.");
 }
 
+// Obter o id_empresa do administrador
+$admin_id = $_SESSION['id_adm'];
+$sql_admin = "SELECT e.id_empresa FROM empresa e WHERE e.adm_id = ?";
+$stmt_admin = $conn->prepare($sql_admin);
+
+if (!$stmt_admin) {
+    die("Erro na preparação da consulta admin: " . $conn->error);
+}
+
+$stmt_admin->bind_param("i", $admin_id);
+$stmt_admin->execute();
+$result_admin = $stmt_admin->get_result();
+$admin = $result_admin->fetch_assoc();
+
+if ($admin) {
+    $empresa_id = $admin['id_empresa'];
+} else {
+    die("Erro: Nenhuma empresa cadastrada para este administrador.");
+}
+
+$stmt_admin->close();
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Capturar os dados do formulário
     $nome = $_POST['nome'] ?? '';
@@ -36,6 +58,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $iban = $_POST['iban'] ?? '';
     $salario_base = $_POST['salario_base'] ?? 0.00;
     $num_ss = $_POST['num_ss'] ?? '';
+
+    // Verificar se "Outro" foi selecionado e usar o valor do campo adicional
+    /* Removido:
+    if ($banco === 'OUTRO') {
+        $banco = $_POST['outro_banco'] ?? '';
+    }
+    */
 
     // Pegando o ID do admin logado
     if (!isset($_SESSION['id_adm'])) {
@@ -578,6 +607,63 @@ body.dark {
         background: #64c2a7;
     }
 
+    /* Estilo para esconder a seta do select quando desabilitado */
+    select:disabled {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        background-image: none !important;
+    }
+
+    /* Ajuste do container do select com cadeado */
+    .readonly-container select {
+        padding-right: 30px;
+        width: 100%;
+    }
+
+    .readonly-container .lock-icon {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: #666;
+    }
+
+    /* Estilo para o tooltip do cargo bloqueado */
+    .readonly-container[title] {
+        position: relative;
+        cursor: not-allowed;
+    }
+
+    .readonly-container[title]:hover::after {
+        content: attr(title);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 5px 10px;
+        background-color: #333;
+        color: white;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: nowrap;
+        z-index: 1000;
+        margin-bottom: 5px;
+    }
+
+    .readonly-container[title]:hover::before {
+        content: '';
+        position: absolute;
+        bottom: calc(100% - 5px);
+        left: 50%;
+        transform: translateX(-50%);
+        border-width: 5px;
+        border-style: solid;
+        border-color: #333 transparent transparent transparent;
+        z-index: 1000;
+    }
+
     </style>
 </head>
 <body>
@@ -751,51 +837,28 @@ body.dark {
                         <input type="text" name="estado" id="estado" placeholder="Ativo*" readonly>
                     </div>
                     <div class="form-group">
-                        <label>Cargo</label>
-                        <select size="1" name="cargo" id="cargo" required>
-                            <option value="">Selecione um cargo</option>
-                            <option value="Administrador">Administrador</option>
-                            <option value="Analista Financeiro">Analista Financeiro</option>
-                            <option value="Assistente Administrativo">Assistente Administrativo</option>
-                            <option value="Assistente de Recursos Humanos">Assistente de Recursos Humanos</option>
-                            <option value="Atendente Comercial">Atendente Comercial</option>
-                            <option value="Auditor">Auditor</option>
-                            <option value="Contabilista">Contabilista</option>
-                            <option value="Coordenador de Projetos">Coordenador de Projetos</option>
-                            <option value="Diretor Comercial">Diretor Comercial</option>
-                            <option value="Diretor de Recursos Humanos">Diretor de Recursos Humanos</option>
-                            <option value="Engenheiro Civil">Engenheiro Civil</option>
-                            <option value="Engenheiro Informático">Engenheiro Informático</option>
-                            <option value="Especialista em Marketing">Especialista em Marketing</option>
-                            <option value="Gerente de Contas">Gerente de Contas</option>
-                            <option value="Gestor de Projetos">Gestor de Projetos</option>
-                            <option value="Jurista">Jurista</option>
-                            <option value="Operador de Caixa">Operador de Caixa</option>
-                            <option value="Operador de Máquinas">Operador de Máquinas</option>
-                            <option value="Programador">Programador</option>
-                            <option value="Rececionista">Rececionista</option>
-                            <option value="Secretário Executivo">Secretário Executivo</option>
-                            <option value="Supervisor de Vendas">Supervisor de Vendas</option>
-                            <option value="Técnico de Manutenção">Técnico de Manutenção</option>
-                            <option value="Técnico de Suporte">Técnico de Suporte</option>
-                            <option value="Vendedor">Vendedor</option>
+                        <label for="departamento">Departamento</label>
+                        <select id="departamento" name="departamento" required>
+                            <option value="">Selecione o Departamento</option>
                         </select>
                     </div>
                     
                     <div class="form-group">
-                        <label>Departamento</label>
-                        <select size="1" name="departamento" id="departamento"required>
-                            <option value="">Selecione um departamento</option>
-                            <option value="administrativo">Administrativo</option>
-                            <option value="financeiro">Financeiro</option>
-                            <option value="rh">Recursos Humanos</option>
-                            <option value="tecnologia">Tecnologia da Informação</option>
-                            <option value="marketing">Marketing</option>
-                            <option value="vendas">Vendas</option>
-                            <option value="juridico">Jurídico</option>
-                            <option value="logistica">Logística</option>
-                            <option value="operacional">Operacional</option>
-                        </select>
+                        <label for="cargo">Cargo</label>
+                        <div class="readonly-container" title="Selecione o Departamento primeiro para prosseguir">
+                            <select id="cargo" name="cargo" required disabled>
+                                <option value="">Selecione o Cargo</option>
+                            </select>
+                            <i class="fas fa-lock lock-icon"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="salario_base">Salário Base</label>
+                        <div class="readonly-container" title="Salário Calculado automaticamente">
+                            <input type="number" id="salario_base" name="salario_base" step="0.01" readonly>
+                            <i class="fas fa-lock lock-icon"></i>
+                        </div>
                     </div>
                     
                     <div class="form-group">
@@ -814,25 +877,45 @@ body.dark {
                     </div>
                     
                     <div class="form-group">
-                        <label>Nº conta banc</label>
+                        <label>Nº conta banco</label>
                         <input type="number" name="num_conta_bancaria" id="num_conta_bancaria" title="Número da conta bancária" placeholder="Digite aqui" required>
                     </div>
                     <div class="form-group">
                         <label>Banco</label>
                         <select size="1" name="banco" id="banco" required>
                             <option value="">Selecione um banco</option>
-                            <option value="BAI">BAI</option>
-                            <option value="BIC">BIC</option>
-    
+                            <?php
+                            // Buscar bancos ativos
+                            $sql_bancos = "SELECT banco_nome, banco_codigo FROM bancos_ativos WHERE empresa_id = ? AND ativo = 1 ORDER BY banco_nome";
+                            $stmt_bancos = $conn->prepare($sql_bancos);
+                            
+                            if (!$stmt_bancos) {
+                                die("Erro na preparação da consulta: " . $conn->error);
+                            }
+                            
+                            $stmt_bancos->bind_param("i", $empresa_id);
+                            
+                            if (!$stmt_bancos->execute()) {
+                                die("Erro ao executar a consulta: " . $stmt_bancos->error);
+                            }
+                            
+                            $result_bancos = $stmt_bancos->get_result();
+                            
+                            if ($result_bancos->num_rows > 0) {
+                                while($banco = $result_bancos->fetch_assoc()) {
+                                    echo "<option value='".$banco['banco_codigo']."'>".$banco['banco_nome']."</option>";
+                                }
+                            } else {
+                                echo "<!-- Nenhum banco ativo encontrado para a empresa ID: " . $empresa_id . " -->";
+                            }
+                            
+                            $stmt_bancos->close();
+                            ?>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="IBAN">IBAN</label>
                         <input type="text" id="iban" name="iban" placeholder="Digite aqui" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Salário base</label>
-                        <input type="text" name="salario_base" id="salario_base" placeholder="Ad. automaticamente*" readonly>
                     </div>
                     <div class="form-group">
                         <label>Nº SS</label>
@@ -1078,6 +1161,100 @@ document.addEventListener('DOMContentLoaded', function() {
         updateTime();
 
         setInterval(updateTime, 1000);
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const departamentoSelect = document.getElementById('departamento');
+    const cargoSelect = document.getElementById('cargo');
+    const salarioBaseInput = document.getElementById('salario_base');
+
+    departamentoSelect.addEventListener('change', function() {
+        const departamentoId = this.value;
+        
+        // Limpar o select de cargos
+        cargoSelect.innerHTML = '<option value="">Selecione o Cargo</option>';
+        salarioBaseInput.value = '';
+        
+        if (departamentoId) {
+            // Fazer a requisição AJAX para buscar os cargos
+            fetch(`get_cargos.php?departamento_id=${departamentoId}`)
+                .then(response => response.json())
+                .then(cargos => {
+                    cargos.forEach(cargo => {
+                        const option = document.createElement('option');
+                        option.value = cargo.id;
+                        option.textContent = cargo.nome;
+                        option.dataset.salario = cargo.salario_base;
+                        cargoSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar cargos:', error);
+                });
+        }
+    });
+
+    cargoSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption && selectedOption.dataset.salario) {
+            salarioBaseInput.value = selectedOption.dataset.salario;
+        } else {
+            salarioBaseInput.value = '';
+        }
+    });
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Carregar departamentos e cargos ao iniciar a página
+    carregarDepartamentosECargos();
+
+    // Função para carregar departamentos e cargos
+    function carregarDepartamentosECargos() {
+        fetch('configuracoes_sam/get_cargos.php')
+            .then(response => response.json())
+            .then(data => {
+                // Preencher o select de departamentos
+                const selectDepartamento = document.getElementById('departamento');
+                selectDepartamento.innerHTML = '<option value="">Selecione o Departamento</option>';
+                data.departamentos.forEach(depto => {
+                    selectDepartamento.innerHTML += `<option value="${depto.id}">${depto.nome}</option>`;
+                });
+
+                // Preencher o select de cargos
+                const selectCargo = document.getElementById('cargo');
+                selectCargo.innerHTML = '<option value="">Selecione o Cargo</option>';
+                data.cargos.forEach(cargo => {
+                    selectCargo.innerHTML += `<option value="${cargo.id}" data-salario="${cargo.salario_base}">${cargo.nome} (${cargo.departamento_nome})</option>`;
+                });
+
+                // Adicionar evento para atualizar salário base quando selecionar cargo
+                selectCargo.addEventListener('change', function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const salarioBase = selectedOption.getAttribute('data-salario');
+                    document.getElementById('salario_base').value = salarioBase || '';
+                });
+
+                // Adicionar evento para habilitar/desabilitar o select de cargo
+                selectDepartamento.addEventListener('change', function() {
+                    const selectCargo = document.getElementById('cargo');
+                    const lockIcon = selectCargo.parentElement.querySelector('.lock-icon');
+                    if (this.value) {
+                        selectCargo.disabled = false;
+                        lockIcon.style.display = 'none';
+                    } else {
+                        selectCargo.disabled = true;
+                        selectCargo.value = '';
+                        document.getElementById('salario_base').value = '';
+                        lockIcon.style.display = 'block';
+                    }
+                });
+            })
+            .catch(error => console.error('Erro ao carregar dados:', error));
+    }
+});
 </script>
 </body>
 </html>

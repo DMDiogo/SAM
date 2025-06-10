@@ -21,6 +21,12 @@ $stmt_cleanup = $mysqli->prepare($sql_cleanup);
 $stmt_cleanup->bind_param("i", $_SESSION['id_adm']);
 $stmt_cleanup->execute();
 
+// Limpa todas as sessões ativas
+$sql_cleanup_all = "DELETE FROM adm_sessions WHERE adm_id = ?";
+$stmt_cleanup_all = $mysqli->prepare($sql_cleanup_all);
+$stmt_cleanup_all->bind_param("i", $_SESSION['id_adm']);
+$stmt_cleanup_all->execute();
+
 // Processa a alteração da configuração de dois fatores
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['dois_fatores'])) {
     $dois_fatores = $_POST['dois_fatores'] === 'true' ? 1 : 0;
@@ -154,7 +160,7 @@ $stmt->execute();
 $result = $stmt->get_result();
 $config = $result->fetch_assoc();
 
-$dois_fatores_ativado = $config ? $config['dois_fatores'] : false;
+$dois_fatores_ativado = false;
 
 // Busca as sessões ativas
 $sql_sessoes = "SELECT session_id, user_agent, ip_address, last_activity 
@@ -556,7 +562,7 @@ body.dark .nav-menu li.active {
 }
 
 .status.online {
-    background-color: #28a745;
+    background-color: #32a177;
     color: white;
 }
     </style>
@@ -607,8 +613,8 @@ body.dark .nav-menu li.active {
                 <h3>Sessões Ativas</h3>
                 <div class="active-sessions">
                     <?php if (empty($sessoes)): ?>
-                        <div class="session-item">
-                            <div>
+                    <div class="session-item">
+                        <div>
                                 <strong>Nenhuma sessão ativa no momento</strong>
                             </div>
                         </div>
@@ -617,8 +623,8 @@ body.dark .nav-menu li.active {
                             $browser_info = getBrowserInfo($sessao['user_agent']);
                             $is_current_session = $sessao['session_id'] === session_id();
                         ?>
-                        <div class="session-item">
-                            <div>
+                    <div class="session-item">
+                        <div>
                                 <strong><?php echo htmlspecialchars($browser_info['browser']); ?></strong>
                                 <p>
                                     <?php echo htmlspecialchars($browser_info['os']); ?> | 
@@ -643,15 +649,15 @@ body.dark .nav-menu li.active {
                 <h3>Log de Atividades</h3>
                 <div class="active-sessions">
                     <?php if (empty($logs)): ?>
-                        <div class="session-item">
-                            <div>
+                    <div class="session-item">
+                        <div>
                                 <strong>Nenhuma atividade registrada</strong>
                             </div>
                         </div>
                     <?php else: ?>
                         <?php foreach ($logs as $log): ?>
-                        <div class="session-item">
-                            <div>
+                    <div class="session-item">
+                        <div>
                                 <strong><?php echo htmlspecialchars($log['acao']); ?></strong>
                                 <p>
                                     <?php echo date('d/m/Y H:i', strtotime($log['data_hora'])); ?> | 
