@@ -7,38 +7,6 @@ if (!isset($_SESSION['id_adm'])) {
     die("Acesso negado");
 }
 
-// Criar tabelas se não existirem
-$sql_criar_tabelas = "
-CREATE TABLE IF NOT EXISTS politicas_trabalho (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    empresa_id INT NOT NULL,
-    tipo ENUM('horario', 'homeoffice', 'vestimenta') NOT NULL,
-    titulo VARCHAR(100) NOT NULL,
-    descricao TEXT NOT NULL,
-    valor TEXT NOT NULL,
-    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (empresa_id) REFERENCES empresa(id_empresa)
-)";
-
-if (!$conn->query($sql_criar_tabelas)) {
-    die("Erro ao criar tabela: " . $conn->error);
-}
-
-// Criar tabela de bancos se não existir
-$sql_criar_tabela_bancos = "
-CREATE TABLE IF NOT EXISTS bancos_ativos (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    empresa_id INT NOT NULL,
-    banco_nome VARCHAR(100) NOT NULL,
-    banco_codigo VARCHAR(10) NOT NULL,
-    ativo BOOLEAN DEFAULT false,
-    FOREIGN KEY (empresa_id) REFERENCES empresa(id_empresa)
-)";
-
-if (!$conn->query($sql_criar_tabela_bancos)) {
-    die("Erro ao criar tabela de bancos: " . $conn->error);
-}
-
 // Debug: Verificar se o id_adm está na sessão
 echo "<!-- Debug: id_adm = " . $_SESSION['id_adm'] . " -->";
 
@@ -156,76 +124,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Processar formulário de política
         if (isset($_POST['salvar_politica'])) {
             $tipo = $_POST['tipo'];
-            
-            if ($tipo === 'horario') {
-                $tipo_config = $_POST['tipo_config_horario'];
-                
-                if ($tipo_config === 'turno') {
-                    // Criar/atualizar turno padrão
-                    $nome_turno = $_POST['nome_turno'];
-                    $dias = $_POST['dias_selecionados'];
-                    $hora_entrada = $_POST['hora_entrada'];
-                    $hora_saida = $_POST['hora_saida'];
-                    $almoco_inicio = $_POST['almoco_inicio'];
-                    $almoco_fim = $_POST['almoco_fim'];
-                    
-                    $sql = "INSERT INTO turnos_padrao (empresa_id, nome_turno, hora_entrada, hora_saida, almoco_inicio, almoco_fim, dias_semana) 
-                           VALUES (?, ?, ?, ?, ?, ?, ?)";
-                    $stmt = $conn->prepare($sql);
-                    $stmt->bind_param("issssss", $empresa_id, $nome_turno, $hora_entrada, $hora_saida, $almoco_inicio, $almoco_fim, $dias);
-                    
-                    if (!$stmt->execute()) {
-                        die("Erro ao salvar turno: " . $stmt->error);
-                    }
-                    
-                } else {
-                    // Salvar horário personalizado
-                    $funcionario_id = $_POST['funcionario_id'];
-                    $turno_id = $_POST['turno_id'];
-                    $dias = $_POST['dias_personalizado'];
-                    $hora_entrada = $_POST['hora_entrada_personalizado'];
-                    $hora_saida = $_POST['hora_saida_personalizado'];
-                    $almoco_inicio = $_POST['almoco_inicio_personalizado'];
-                    $almoco_fim = $_POST['almoco_fim_personalizado'];
-                    
-                    // Verificar se já existe um horário para este funcionário
-                    $sql_check = "SELECT id FROM horarios_funcionarios WHERE funcionario_id = ?";
-                    $stmt_check = $conn->prepare($sql_check);
-                    $stmt_check->bind_param("i", $funcionario_id);
-                    $stmt_check->execute();
-                    $result_check = $stmt_check->get_result();
-                    
-                    if ($result_check->num_rows > 0) {
-                        // Atualizar horário existente
-                        $sql = "UPDATE horarios_funcionarios SET 
-                               turno_id = ?, 
-                               hora_entrada = ?, 
-                               hora_saida = ?, 
-                               almoco_inicio = ?, 
-                               almoco_fim = ?, 
-                               dias_semana = ?,
-                               tipo = ?
-                               WHERE funcionario_id = ?";
-                        $stmt = $conn->prepare($sql);
-                        $tipo_horario = $turno_id ? 'turno' : 'personalizado';
-                        $stmt->bind_param("issssssi", $turno_id, $hora_entrada, $hora_saida, $almoco_inicio, $almoco_fim, $dias, $tipo_horario, $funcionario_id);
-                    } else {
-                        // Inserir novo horário
-                        $sql = "INSERT INTO horarios_funcionarios 
-                               (funcionario_id, turno_id, hora_entrada, hora_saida, almoco_inicio, almoco_fim, dias_semana, tipo) 
-                               VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-                        $stmt = $conn->prepare($sql);
-                        $tipo_horario = $turno_id ? 'turno' : 'personalizado';
-                        $stmt->bind_param("iissssss", $funcionario_id, $turno_id, $hora_entrada, $hora_saida, $almoco_inicio, $almoco_fim, $dias, $tipo_horario);
-                    }
-                    
-                    if (!$stmt->execute()) {
-                        die("Erro ao salvar horário: " . $stmt->error);
-                    }
-                }
-            } else {
-                $valor = $_POST['valor'];
-            }
+            $titulo = $_POST['titulo'];
+            $descricao = $_POST['descricao'];
+            $valor = $_POST['valor'];
 
             // Verificar se já existe uma política deste tipo
             $sql_check = "SELECT id FROM politicas_trabalho WHERE empresa_id = ? AND tipo = ?";
@@ -250,9 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 die("Erro ao salvar política: " . $stmt->error);
             }
 
-            // Debug
-            error_log("Política salva com sucesso: " . $tipo);
-
+            // Redirecionar para evitar reenvio do formulário
             header("Location: " . $_SERVER['PHP_SELF']);
             exit();
         }
@@ -353,9 +252,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $novo_nome = $_POST['edit_banco_nome'];
             $novo_codigo = $_POST['edit_banco_codigo'];
             
-            // Debug
-            error_log("Editando banco: ID=" . $banco_id . ", Nome=" . $novo_nome . ", Codigo=" . $novo_codigo);
-            
             $sql = "UPDATE bancos_ativos SET banco_nome = ?, banco_codigo = ? WHERE id = ? AND empresa_id = ?";
             $stmt = $conn->prepare($sql);
             if (!$stmt) {
@@ -366,9 +262,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$stmt->execute()) {
                 die("Erro ao atualizar banco: " . $stmt->error);
             }
-            
-            // Debug
-            error_log("Banco atualizado com sucesso");
             
             header("Location: " . $_SERVER['PHP_SELF'] . "#bancos");
             exit();
@@ -398,9 +291,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $departamento_id = $_POST['departamento_id'];
             $novo_nome = $_POST['edit_departamento_nome'];
             
-            // Debug
-            error_log("Editando departamento: ID=" . $departamento_id . ", Nome=" . $novo_nome);
-            
             $sql = "UPDATE departamentos SET nome = ? WHERE id = ? AND empresa_id = ?";
             $stmt = $conn->prepare($sql);
             if (!$stmt) {
@@ -411,9 +301,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$stmt->execute()) {
                 die("Erro ao atualizar departamento: " . $stmt->error);
             }
-            
-            // Debug
-            error_log("Departamento atualizado com sucesso");
             
             header("Location: " . $_SERVER['PHP_SELF'] . "#departamentos");
             exit();
@@ -426,9 +313,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $novo_salario = $_POST['edit_cargo_salario'];
             $novo_departamento = $_POST['edit_cargo_departamento'];
             
-            // Debug
-            error_log("Editando cargo: ID=" . $cargo_id . ", Nome=" . $novo_nome . ", Salario=" . $novo_salario . ", Departamento=" . $novo_departamento);
-            
             $sql = "UPDATE cargos SET nome = ?, salario_base = ?, departamento_id = ? WHERE id = ? AND empresa_id = ?";
             $stmt = $conn->prepare($sql);
             if (!$stmt) {
@@ -440,10 +324,98 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 die("Erro ao atualizar cargo: " . $stmt->error);
             }
             
-            // Debug
-            error_log("Cargo atualizado com sucesso");
-            
             header("Location: " . $_SERVER['PHP_SELF'] . "#cargos");
+            exit();
+        }
+
+        // Processar adição de novo subsídio personalizado
+        if (isset($_POST['add_novo_subsidio']) && !empty($_POST['novo_subsidio_nome']) && !empty($_POST['novo_subsidio_tipo'])) {
+            $nome = $_POST['novo_subsidio_nome'];
+            $tipo = $_POST['novo_subsidio_tipo'];
+            $valor_padrao = isset($_POST['novo_subsidio_valor_padrao']) ? $_POST['novo_subsidio_valor_padrao'] : null;
+            $unidade = '';
+
+            // Validar se valor_padrao foi fornecido para tipos que precisam
+            if ($tipo === 'valor_fixo' && $valor_padrao === null) {
+                $valor_padrao = 0;
+            } else if ($tipo === 'percentagem' && $valor_padrao === null) {
+                $valor_padrao = 0;
+            }
+
+            // Definir a unidade com base no tipo e na base de cálculo (se valor_fixo)
+            if ($tipo === 'valor_fixo') {
+                $base_calculo = isset($_POST['novo_subsidio_unidade_valor_fixo']) ? $_POST['novo_subsidio_unidade_valor_fixo'] : '/dia útil';
+                $unidade = 'Kz' . $base_calculo;
+            } else if ($tipo === 'percentagem') {
+                $unidade = '%';
+            }
+
+            $sql_insert = "INSERT INTO subsidios_personalizados (empresa_id, nome, tipo, valor_padrao, unidade) VALUES (?, ?, ?, ?, ?)";
+            $stmt_insert = $conn->prepare($sql_insert);
+            if (!$stmt_insert) {
+                die("Erro na preparação da consulta de inserção de novo subsídio: " . $conn->error);
+            }
+            $stmt_insert->bind_param("issss", $empresa_id, $nome, $tipo, $valor_padrao, $unidade);
+            if (!$stmt_insert->execute()) {
+                die("Erro ao inserir novo subsídio: " . $stmt_insert->error);
+            }
+            
+            header("Location: " . $_SERVER['PHP_SELF'] . "#subsidios");
+            exit();
+        }
+
+        // Processar edição de subsídio personalizado
+        if (isset($_POST['edit_subsidio']) && !empty($_POST['edit_subsidio_nome']) && !empty($_POST['edit_subsidio_tipo'])) {
+            $id = $_POST['edit_subsidio_id'];
+            $nome = $_POST['edit_subsidio_nome'];
+            $tipo = $_POST['edit_subsidio_tipo'];
+            $valor_padrao = isset($_POST['edit_subsidio_valor_padrao']) ? $_POST['edit_subsidio_valor_padrao'] : null;
+            $unidade = '';
+
+            // Validar se valor_padrao foi fornecido para tipos que precisam
+            if ($tipo === 'valor_fixo' && $valor_padrao === null) {
+                $valor_padrao = 0;
+            } else if ($tipo === 'percentagem' && $valor_padrao === null) {
+                $valor_padrao = 0;
+            }
+
+            // Definir a unidade com base no tipo e na base de cálculo (se valor_fixo)
+            if ($tipo === 'valor_fixo') {
+                $base_calculo = isset($_POST['edit_subsidio_unidade_valor_fixo']) ? $_POST['edit_subsidio_unidade_valor_fixo'] : '/dia útil';
+                $unidade = 'Kz' . $base_calculo;
+            } else if ($tipo === 'percentagem') {
+                $unidade = '%';
+            }
+
+            $sql_update = "UPDATE subsidioss_personalizados SET nome = ?, tipo = ?, valor_padrao = ?, unidade = ? WHERE id = ? AND empresa_id = ?";
+            $stmt_update = $conn->prepare($sql_update);
+            if (!$stmt_update) {
+                die("Erro na preparação da consulta de atualização: " . $conn->error);
+            }
+            $stmt_update->bind_param("ssssii", $nome, $tipo, $valor_padrao, $unidade, $id, $empresa_id);
+            if (!$stmt_update->execute()) {
+                die("Erro ao atualizar subsídio: " . $stmt_update->error);
+            }
+            
+            header("Location: " . $_SERVER['PHP_SELF'] . "#subsidios");
+            exit();
+        }
+
+        // Processar exclusão de subsídio personalizado
+        if (isset($_POST['delete_subsidio']) && !empty($_POST['delete_subsidio_id'])) {
+            $id = $_POST['delete_subsidio_id'];
+            
+            $sql_delete = "DELETE FROM subsidioss_personalizados WHERE id = ? AND empresa_id = ?";
+            $stmt_delete = $conn->prepare($sql_delete);
+            if (!$stmt_delete) {
+                die("Erro na preparação da consulta de exclusão: " . $conn->error);
+            }
+            $stmt_delete->bind_param("ii", $id, $empresa_id);
+            if (!$stmt_delete->execute()) {
+                die("Erro ao excluir subsídio: " . $stmt_delete->error);
+            }
+            
+            header("Location: " . $_SERVER['PHP_SELF'] . "#subsidios");
             exit();
         }
     }
@@ -463,19 +435,6 @@ $result_politicas = $stmt_politicas->get_result();
 $politicas = array();
 while ($row = $result_politicas->fetch_assoc()) {
     $politicas[$row['tipo']] = $row;
-    if ($row['tipo'] === 'horario') {
-        $horario_data = json_decode($row['valor'], true);
-        $dias_formatados = formatarDiasSemana($horario_data['dias']);
-        $horario = $horario_data['horario'];
-        $row['horario_formatado'] = sprintf(
-            "%s: %s às %s (Almoço: %s às %s)",
-            $dias_formatados,
-            $horario['entrada'],
-            $horario['saida'],
-            $horario['almoco']['inicio'],
-            $horario['almoco']['fim']
-        );
-    }
 }
 
 // Buscar bancos ativos
@@ -487,6 +446,23 @@ $result_ativos = $stmt_ativos->get_result();
 $bancos_ativos = [];
 while ($row = $result_ativos->fetch_assoc()) {
     $bancos_ativos[] = $row['banco_codigo'];
+}
+
+// Consultar subsídios personalizados
+$sql_subsidios = "SELECT * FROM subsidios_personalizados WHERE empresa_id = ? ORDER BY nome";
+$stmt_subsidios = $conn->prepare($sql_subsidios);
+if (!$stmt_subsidios) {
+    die("Erro na preparação da consulta de subsídios: " . $conn->error);
+}
+$stmt_subsidios->bind_param("i", $empresa_id);
+if (!$stmt_subsidios->execute()) {
+    die("Erro ao consultar subsídios: " . $stmt_subsidios->error);
+}
+$result_subsidios = $stmt_subsidios->get_result();
+
+$subsidios_personalizados = [];
+while ($row = $result_subsidios->fetch_assoc()) {
+    $subsidios_personalizados[] = $row;
 }
 ?>
 <!DOCTYPE html>
@@ -712,7 +688,7 @@ while ($row = $result_ativos->fetch_assoc()) {
 
         .form-group {
             display: flex;
-            gap: 10px;
+            gap: 1px;
             margin-bottom: 15px;
         }
 
@@ -833,7 +809,7 @@ while ($row = $result_ativos->fetch_assoc()) {
             background-color: var(--white);
             border-radius: 8px;
             padding: 20px;
-            margin-bottom: 20px;
+            margin-bottom: 30px; /* Aumentar margem para não colar na próxima seção */
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
@@ -846,8 +822,9 @@ while ($row = $result_ativos->fetch_assoc()) {
 
         .form-container form {
             display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
+            flex-direction: row; /* Elementos lado a lado */
+            flex-wrap: wrap; /* Quebrar linha se necessário */
+            gap: 20px; /* Espaçamento maior entre os elementos */
         }
 
         .form-container input,
@@ -1302,6 +1279,559 @@ while ($row = $result_ativos->fetch_assoc()) {
         body.dark .modal-banco .close:hover {
             color: #fff;
         }
+
+        /* Estilos para a seção de subsídios */
+        .subsidios-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        #subsidios .subsidio-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #subsidios .subsidio-card:hover {
+            transform: translateY(-2px);
+        }
+
+        #subsidios .subsidio-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        #subsidios .subsidio-header h3 {
+            margin: 0;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        #subsidios .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+
+        #subsidios .badge.obrigatorio {
+            background-color: #fde9e9;
+            color: #d32f2f;
+        }
+
+        #subsidios .badge.opcional {
+            background-color: #f5f5f5;
+            color: #666;
+        }
+
+        #subsidios .badge.personalizado {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+
+        #subsidios .subsidio-info {
+            color: #666;
+            flex-grow: 1;
+        }
+
+        #subsidios .subsidio-desc {
+            font-size: 0.9em;
+            margin-top: 5px;
+            color: #888;
+        }
+
+        #subsidios .valor-range {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        #subsidios .slider {
+            flex: 1;
+            height: 4px;
+            -webkit-appearance: none;
+            background: #ddd;
+            border-radius: 2px;
+            outline: none;
+        }
+
+        #subsidios .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #3EB489;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        #subsidios .valor-atual {
+            min-width: 50px;
+            text-align: right;
+            font-weight: 500;
+        }
+
+        #subsidios .valor-input {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        #subsidios .valor-subsidio {
+            width: 100px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: right;
+        }
+
+        #subsidios .moeda {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        #subsidios .personalizavel {
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+
+        #subsidios .personalizavel label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+
+        /* Dark mode styles */
+        body.dark #subsidios .subsidio-card {
+            background: #262626;
+        }
+
+        body.dark #subsidios .subsidio-header h3 {
+            color: #e0e0e0;
+        }
+
+        body.dark #subsidios .badge.obrigatorio {
+            background-color: #1a237e;
+            color: #e0e0e0;
+        }
+
+        body.dark #subsidios .badge.opcional {
+            background-color: #424242;
+            color: #e0e0e0;
+        }
+
+        body.dark #subsidios .badge.personalizado {
+            background-color: #0d47a1;
+            color: #e0e0e0;
+        }
+
+        body.dark #subsidios .subsidio-info {
+            color: #b0b0b0;
+        }
+
+        body.dark #subsidios .subsidio-desc {
+            color: #888;
+        }
+
+        body.dark #subsidios .slider {
+            background: #444;
+        }
+
+        body.dark #subsidios .valor-subsidio {
+            background: #333;
+            color: #e0e0e0;
+            border-color: #444;
+        }
+
+        body.dark #subsidios .moeda {
+            color: #b0b0b0;
+        }
+
+        /* Estilos específicos para o formulário de adicionar subsídio */
+        #subsidios .form-container {
+            background-color: var(--white);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px; /* Aumentar margem para não colar na próxima seção */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        body.dark #subsidios .form-container {
+            background-color: #262626;
+        }
+
+        #subsidios .form-container h3 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+
+        #subsidios .form-container form {
+            display: flex;
+            flex-direction: row; /* Elementos lado a lado */
+            flex-wrap: wrap; /* Quebrar linha se necessário */
+            gap: 20px; /* Espaçamento maior entre os elementos */
+            align-items: flex-start; /* Alinhar itens pelo topo */
+        }
+
+        #subsidios .form-group {
+             margin-bottom: 0; /* Remover margem inferior padrão do form-group */
+             min-width: 150px; /* Largura mínima para evitar que fiquem muito pequenos */
+             flex: 1; /* Permitir que os grupos cresçam */
+             display: flex; /* Usar flexbox */
+             flex-direction: column; /* Empilhar label e input */
+             justify-content: flex-start; /* Alinhar conteúdo ao topo dentro do grupo */
+             align-items: flex-start; /* Alinhar itens do grupo ao topo */
+         }
+
+         #subsidios .form-group label {
+             display: block;
+             margin-bottom: 2px; /* Reduzido de 5px para 2px */
+             font-weight: 500;
+             color: var(--text-color);
+         }
+
+         body.dark #subsidios .form-group label {
+              color: #e0e0e0;
+         }
+
+         #subsidios .form-group input[type="text"],
+         #subsidios .form-group input[type="number"],
+         #subsidios .form-group select {
+             padding: 8px; /* Reduzido de 10px para 8px */
+             border: 1px solid var(--border-color);
+             border-radius: 4px;
+             box-sizing: border-box; /* Incluir padding e borda no tamanho */
+             background-color: var(--white);
+             color: var(--text-color);
+             height: 36px; /* Reduzido de 40px para 36px */
+             width: 100%; /* Ocupar largura total do flex item */
+             line-height: 20px; /* Ajustar line-height para melhor alinhamento do texto */
+             margin-top: 0; /* Garantir que não há margem extra no topo */
+             margin-bottom: 0; /* Garantir que não há margem extra na base */
+         }
+
+         body.dark #subsidios .form-group input[type="text"],
+         body.dark #subsidios .form-group input[type="number"],
+         body.dark #subsidios .form-group select {
+             background-color: #333;
+             color: #e0e0e0;
+             border-color: #444;
+         }
+
+         #subsidios .form-group input::placeholder,
+         body.dark #subsidios .form-group input::placeholder {
+              color: #888;
+         }
+
+         /* Estilo para o grupo do checkbox de personalização */
+         #subsidios .form-group:last-child {
+             flex: 1 1 100%; /* Ocupar a largura total para ficar numa linha própria */
+             display: flex; /* Usar flexbox */
+             align-items: center; /* Alinhar verticalmente */
+             margin-top: 10px; /* Espaço acima do checkbox */
+             min-width: unset; /* Remover largura mínima */
+             flex-direction: row; /* Manter lado a lado */
+             justify-content: flex-start;
+         }
+
+         #subsidios .form-group:last-child label {
+             display: flex; /* Flexbox para label e checkbox */
+             align-items: center; /* Alinhar verticalmente */
+             margin-bottom: 0; /* Remover margem inferior */
+             font-weight: normal; /* Remover negrito */
+             gap: 5px; /* Espaço entre checkbox e texto */
+             cursor: pointer;
+         }
+
+         #subsidios .form-group:last-child input[type="checkbox"] {
+             accent-color: var(--primary-color); /* Usa a variável CSS para a cor verde */
+             margin-right: 0; /* Remover margem à direita extra */
+         }
+
+         #subsidios .form-container button[type="submit"] {
+              align-self: flex-start; /* Alinhar o botão à esquerda */
+              /* Reutiliza estilos do btn-primary */
+         }
+
+         /* Ajustes responsivos para o formulário de subsídio */
+         @media (max-width: 768px) {
+              #subsidios .form-container form {
+                  flex-direction: column; /* Empilhar em telas pequenas */
+                  gap: 15px;
+                  align-items: stretch; /* Esticar itens em telas pequenas */
+              }
+              #subsidios .form-group {
+                  min-width: unset; /* Remover largura mínima em telas pequenas */
+                  flex: unset; /* Remover flex-grow/shrink */
+                  flex-direction: column; /* Voltar a empilhar label e input */
+                  justify-content: flex-start;
+              }
+              #subsidios .form-group input[type="text"],
+              #subsidios .form-group input[type="number"],
+              #subsidios .form-group select {
+                   height: auto; /* Remover altura fixa em telas pequenas */
+                   width: 100%;
+               }
+               #subsidios .form-group:last-child {
+                   flex-direction: row; /* Manter lado a lado em telas pequenas */
+                   align-items: center;
+                   margin-top: 10px;
+                   flex: unset;
+               }
+               #subsidios .form-group:last-child label {
+                   flex-direction: row; /* Manter lado a lado em telas pequenas */
+                   align-items: center;
+               }
+           }
+
+        #subsidios .subsidio-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        #subsidios .btn-edit-subsidio,
+        #subsidios .btn-delete-subsidio {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        #subsidios .btn-edit-subsidio {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        #subsidios .btn-delete-subsidio {
+            background-color: #f44336;
+            color: white;
+        }
+
+        #subsidios .btn-edit-subsidio:hover {
+            background-color: #45a049;
+        }
+
+        #subsidios .btn-delete-subsidio:hover {
+            background-color: #da190b;
+        }
+
+        /* Modal de edição de subsídio */
+        .modal-subsidio {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-subsidio-content {
+            background-color: var(--white);
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 50%;
+            position: relative;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        body.dark .modal-subsidio-content {
+            background-color: #262626;
+            color: #e0e0e0;
+        }
+
+        .modal-subsidio .close {
+            position: absolute;
+            right: 20px;
+            top: 10px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #666;
+        }
+
+        body.dark .modal-subsidio .close {
+            color: #999;
+        }
+
+        .modal-subsidio .close:hover {
+            color: #000;
+        }
+
+        body.dark .modal-subsidio .close:hover {
+            color: #fff;
+        }
+
+        .modal-subsidio-content .form-group {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .modal-subsidio-content .form-group label {
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .modal-subsidio-content .form-group input[type="text"],
+        .modal-subsidio-content .form-group input[type="number"],
+        .modal-subsidio-content .form-group select {
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        body.dark .modal-subsidio-content .form-group label {
+            color: #e0e0e0;
+        }
+
+        body.dark .modal-subsidio-content .form-group input[type="text"],
+        body.dark .modal-subsidio-content .form-group input[type="number"],
+        body.dark .modal-subsidio-content .form-group select {
+            background-color: #333;
+            color: #e0e0e0;
+            border-color: #444;
+        }
+
+        .modal-subsidio-content .form-group:last-child {
+            flex-direction: row;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-subsidio-content .form-group:last-child label {
+            font-weight: normal;
+            margin-bottom: 0;
+        }
+
+        /* Estilos para a tabela de funcionários */
+        .funcionarios-lista {
+            margin-top: 20px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .funcionarios-lista table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .funcionarios-lista th,
+        .funcionarios-lista td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .funcionarios-lista th {
+            background-color: var(--primary-color);
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+
+        .funcionarios-lista tr:hover {
+            background-color: rgba(0,0,0,0.05);
+        }
+
+        body.dark .funcionarios-lista tr:hover {
+            background-color: rgba(255,255,255,0.05);
+        }
+
+        .funcionarios-lista .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+
+        .funcionarios-lista .status-badge.ativo {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .funcionarios-lista .status-badge.inativo {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+
+        body.dark .funcionarios-lista .status-badge.ativo {
+            background-color: #1b5e20;
+            color: #e0e0e0;
+        }
+
+        body.dark .funcionarios-lista .status-badge.inativo {
+            background-color: #b71c1c;
+            color: #e0e0e0;
+        }
+
+        /* Estilo para o switch de ativar/desativar */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider-switch {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider-switch:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider-switch {
+            background-color: var(--primary-color);
+        }
+
+        input:checked + .slider-switch:before {
+            transform: translateX(26px);
+        }
     </style>
 </head>
 <body>
@@ -1334,7 +1864,7 @@ while ($row = $result_ativos->fetch_assoc()) {
                     <div class="policies-grid">
                         <div class="policy-card">
                             <h4>Horário de Trabalho</h4>
-                            <p><?php echo isset($politicas['horario']['horario_formatado']) ? $politicas['horario']['horario_formatado'] : 'Não configurado'; ?></p>
+                            <p>Segunda a Sexta: 8h - 18h</p>
                             <button class="btn-primary" onclick="abrirModal('horario')">Editar</button>
                         </div>
                         <div class="policy-card">
@@ -1651,6 +2181,182 @@ while ($row = $result_ativos->fetch_assoc()) {
                 <button type="submit" name="salvar_bancos" class="btn-primary">Salvar Configurações dos Bancos</button>
             </form>
         </div>
+
+        <!-- Nova Seção de Subsídios -->
+        <div class="section" id="subsidios">
+            <h2>Configuração de Subsídios</h2>
+            <p>Configure os subsídios padrão da empresa e defina quais podem ser personalizados por funcionário.</p>
+
+            <!-- Formulário para adicionar novo subsídio -->
+            <div class="form-container" id="add-subsidio-form">
+                <h3>Adicionar Novo Subsídio</h3>
+                <form action="rh_config.php" method="POST">
+                    <div class="form-group">
+                        <label for="novo_subsidio_nome">Nome do Subsídio:</label>
+                        <input type="text" name="novo_subsidio_nome" id="novo_subsidio_nome" placeholder="Nome do Subsídio" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="novo_subsidio_tipo">Tipo:</label>
+                        <select name="novo_subsidio_tipo" id="novo_subsidio_tipo" required>
+                            <option value="">Selecione o Tipo</option>
+                            <option value="valor_fixo">Valor Fixo</option>
+                            <option value="percentagem">Percentagem</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="novo_subsidio_unidade_tipo" style="display: none;">
+                        <label for="novo_subsidio_unidade_valor_fixo">Base de Cálculo:</label>
+                        <select name="novo_subsidio_unidade_valor_fixo" id="novo_subsidio_unidade_valor_fixo">
+                            <option value="/dia útil">Por Dia Útil</option>
+                            <option value="/mês">Por Mês</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="novo_subsidio_valor_padrao_group">
+                        <label for="novo_subsidio_valor_padrao">Valor Padrão:</label>
+                        <input type="number" name="novo_subsidio_valor_padrao" id="novo_subsidio_valor_padrao" placeholder="Ex: 1000" step="0.01">
+                    </div>
+                    <button type="submit" name="add_novo_subsidio" class="btn-primary">Adicionar Subsídio</button>
+                </form>
+            </div>
+
+            <div class="subsidios-grid">
+                <!-- Subsídios Obrigatórios -->
+                <div class="subsidio-card obrigatorio" data-subsidio-id="1">
+                    <div class="subsidio-header">
+                        <h3>Férias</h3>
+                        <span class="badge obrigatorio">Obrigatório</span>
+                    </div>
+                    <div class="subsidio-info">
+                        <p>100% do salário base</p>
+                        <p class="subsidio-desc">Subsídio obrigatório por lei</p>
+                    </div>
+                </div>
+
+                <div class="subsidio-card obrigatorio" data-subsidio-id="2">
+                    <div class="subsidio-header">
+                        <h3>13.º Mês</h3>
+                        <span class="badge obrigatorio">Obrigatório</span>
+                    </div>
+                    <div class="subsidio-info">
+                        <p>100% do salário base</p>
+                        <p class="subsidio-desc">Subsídio obrigatório por lei</p>
+                    </div>
+                </div>
+
+                <div class="subsidio-card obrigatorio" data-subsidio-id="3">
+                    <div class="subsidio-header">
+                        <h3>Nocturno / Turno</h3>
+                        <span class="badge obrigatorio">Obrigatório</span>
+                    </div>
+                    <div class="subsidio-info">
+                        <div class="valor-range">
+                            <input type="range" min="20" max="50" value="35" class="slider" id="nocturnoRange">
+                            <span class="valor-atual">35%</span>
+                        </div>
+                        <p class="subsidio-desc">Percentual sobre o salário base</p>
+                    </div>
+                </div>
+
+                <div class="subsidio-card obrigatorio" data-subsidio-id="4">
+                    <div class="subsidio-header">
+                        <h3>Risco / Periculosidade</h3>
+                        <span class="badge obrigatorio">Obrigatório</span>
+                    </div>
+                    <div class="subsidio-info">
+                        <div class="valor-range">
+                            <input type="range" min="15" max="30" value="20" class="slider" id="riscoRange">
+                            <span class="valor-atual">20%</span>
+                        </div>
+                        <p class="subsidio-desc">Percentual sobre o salário base</p>
+                    </div>
+                </div>
+
+                <!-- Subsídios Opcionais -->
+                <div class="subsidio-card opcional" data-subsidio-id="5">
+                    <div class="subsidio-header">
+                        <h3>Alimentação</h3>
+                        <span class="badge opcional">Opcional</span>
+                    </div>
+                    <div class="subsidio-info">
+                        <div class="valor-input">
+                            <input type="number" min="500" max="1000" value="750" class="valor-subsidio">
+                            <span class="moeda">Kz/dia útil</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="subsidio-card opcional" data-subsidio-id="6">
+                    <div class="subsidio-header">
+                        <h3>Transporte</h3>
+                        <span class="badge opcional">Opcional</span>
+                    </div>
+                    <div class="subsidio-info">
+                        <div class="valor-input">
+                            <input type="number" min="5000" max="15000" value="10000" class="valor-subsidio">
+                            <span class="moeda">Kz/mês</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="subsidio-card opcional" data-subsidio-id="7">
+                    <div class="subsidio-header">
+                        <h3>Comunicação</h3>
+                        <span class="badge opcional">Opcional</span>
+                    </div>
+                    <div class="subsidio-info">
+                        <div class="valor-input">
+                            <input type="number" min="2000" max="10000" value="5000" class="valor-subsidio">
+                            <span class="moeda">Kz/mês</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="subsidio-card opcional" data-subsidio-id="8">
+                    <div class="subsidio-header">
+                        <h3>Saúde / Seguro</h3>
+                        <span class="badge opcional">Opcional</span>
+                    </div>
+                    <div class="subsidio-info">
+                        <div class="valor-input">
+                            <input type="number" min="0" value="0" class="valor-subsidio">
+                            <span class="moeda">Kz/mês</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subsídios Personalizados -->
+            <?php foreach ($subsidios_personalizados as $subsidio_pers): ?>
+                <div class="subsidio-card" data-subsidio-id="<?php echo $subsidio_pers['id']; ?>">
+                    <div class="subsidio-header">
+                        <h3><?php echo htmlspecialchars($subsidio_pers['nome']); ?></h3>
+                        <span class="badge personalizado">Personalizado</span>
+                    </div>
+                    <div class="subsidio-info">
+                        <?php if ($subsidio_pers['tipo'] === 'valor_fixo'): ?>
+                            <div class="valor-input">
+                                <input type="number" value="<?php echo htmlspecialchars($subsidio_pers['valor_padrao']); ?>" class="valor-subsidio" readonly>
+                                <span class="moeda"><?php echo htmlspecialchars($subsidio_pers['unidade']); ?></span>
+                            </div>
+                        <?php elseif ($subsidio_pers['tipo'] === 'percentagem'): ?>
+                            <div class="valor-range">
+                                <input type="range" min="0" max="100" value="<?php echo htmlspecialchars($subsidio_pers['valor_padrao']); ?>" class="slider" disabled>
+                                <span class="valor-atual"><?php echo htmlspecialchars($subsidio_pers['valor_padrao']); ?>%</span>
+                            </div>
+                        <?php endif; ?>
+                        <div class="subsidio-actions">
+                            <button type="button" class="btn-edit-subsidio" onclick="editarSubsidio(<?php echo htmlspecialchars(json_encode($subsidio_pers)); ?>)">
+                                <i class="fas fa-pencil-alt"></i> Editar
+                            </button>
+                            <button type="button" class="btn-delete-subsidio" onclick="excluirSubsidio(<?php echo $subsidio_pers['id']; ?>)">
+                                <i class="fas fa-trash-alt"></i> Excluir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+
+            <button type="submit" class="btn-primary" style="margin-top: 20px;">Salvar Configurações de Subsídios</button>
+        </div>
     </div>
 </div>
 
@@ -1660,120 +2366,38 @@ while ($row = $result_ativos->fetch_assoc()) {
         <span class="close" onclick="fecharModal('modal')">&times;</span>
         <h2 id="modal-titulo">Editar Política</h2>
         <div id="modal-conteudo">
-            <form id="form-politica" method="POST" action="rh_config.php">
+            <form id="form-politica" method="POST">
                 <input type="hidden" name="tipo" id="politica-tipo">
                 
                 <!-- Campos específicos para horário de trabalho -->
                 <div id="campos-horario" style="display: none;">
                     <div class="form-group">
-                        <label>Tipo de Configuração:</label>
-                        <select id="tipo_config_horario" onchange="toggleTipoHorario()">
-                            <option value="turno">Criar Turno Padrão</option>
-                            <option value="personalizado">Horário Personalizado</option>
-                        </select>
+                        <label>Dias de Trabalho:</label>
+                        <div class="dias-buttons">
+                            <button type="button" class="dia-btn" data-dia="segunda">Segunda</button>
+                            <button type="button" class="dia-btn" data-dia="terca">Terça</button>
+                            <button type="button" class="dia-btn" data-dia="quarta">Quarta</button>
+                            <button type="button" class="dia-btn" data-dia="quinta">Quinta</button>
+                            <button type="button" class="dia-btn" data-dia="sexta">Sexta</button>
+                            <button type="button" class="dia-btn" data-dia="sabado">Sábado</button>
+                            <button type="button" class="dia-btn" data-dia="domingo">Domingo</button>
+                        </div>
+                        <input type="hidden" name="dias_selecionados" id="dias_selecionados">
                     </div>
-
-                    <!-- Campos para Turno Padrão -->
-                    <div id="campos-turno">
-                        <div class="form-group">
-                            <label>Nome do Turno:</label>
-                            <input type="text" name="nome_turno" id="nome_turno" placeholder="Ex: Turno Matutino">
-                        </div>
-                        <div class="form-group">
-                            <label>Dias de Trabalho:</label>
-                            <div class="dias-buttons">
-                                <button type="button" class="dia-btn" data-dia="segunda">Segunda</button>
-                                <button type="button" class="dia-btn" data-dia="terca">Terça</button>
-                                <button type="button" class="dia-btn" data-dia="quarta">Quarta</button>
-                                <button type="button" class="dia-btn" data-dia="quinta">Quinta</button>
-                                <button type="button" class="dia-btn" data-dia="sexta">Sexta</button>
-                                <button type="button" class="dia-btn" data-dia="sabado">Sábado</button>
-                                <button type="button" class="dia-btn" data-dia="domingo">Domingo</button>
-                            </div>
-                            <input type="hidden" name="dias_selecionados" id="dias_selecionados">
-                        </div>
-                        <div class="form-group">
-                            <label>Horário de Entrada:</label>
-                            <input type="time" name="hora_entrada" id="hora_entrada" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Horário de Saída:</label>
-                            <input type="time" name="hora_saida" id="hora_saida" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Intervalo para Almoço:</label>
-                            <div class="intervalo-group">
-                                <input type="time" name="almoco_inicio" id="almoco_inicio" placeholder="Início" required>
-                                <span>até</span>
-                                <input type="time" name="almoco_fim" id="almoco_fim" placeholder="Fim" required>
-                            </div>
-                        </div>
+                    <div class="form-group">
+                        <label>Horário de Entrada:</label>
+                        <input type="time" name="hora_entrada" id="hora_entrada">
                     </div>
-
-                    <!-- Campos para Horário Personalizado -->
-                    <div id="campos-personalizado" style="display: none;">
-                        <div class="form-group">
-                            <label>Funcionário:</label>
-                            <select name="funcionario_id" id="funcionario_id">
-                                <option value="">Selecione um funcionário</option>
-                                <?php
-                                // Buscar funcionários da empresa
-                                $sql_func = "SELECT id_funcionario, nome FROM funcionarios WHERE empresa_id = ?";
-                                $stmt_func = $conn->prepare($sql_func);
-                                $stmt_func->bind_param("i", $empresa_id);
-                                $stmt_func->execute();
-                                $result_func = $stmt_func->get_result();
-                                while($func = $result_func->fetch_assoc()) {
-                                    echo "<option value='".$func['id_funcionario']."'>".$func['nome']."</option>";
-                                }
-                                ?>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Turno:</label>
-                            <select name="turno_id" id="turno_id">
-                                <option value="">Selecione um turno</option>
-                                <?php
-                                // Buscar turnos padrão da empresa
-                                $sql_turnos = "SELECT id, nome_turno FROM turnos_padrao WHERE empresa_id = ?";
-                                $stmt_turnos = $conn->prepare($sql_turnos);
-                                $stmt_turnos->bind_param("i", $empresa_id);
-                                $stmt_turnos->execute();
-                                $result_turnos = $stmt_turnos->get_result();
-                                while($turno = $result_turnos->fetch_assoc()) {
-                                    echo "<option value='".$turno['id']."'>".$turno['nome_turno']."</option>";
-                                }
-                                ?>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Dias de Trabalho:</label>
-                            <div class="dias-buttons">
-                                <button type="button" class="dia-btn" data-dia="segunda">Segunda</button>
-                                <button type="button" class="dia-btn" data-dia="terca">Terça</button>
-                                <button type="button" class="dia-btn" data-dia="quarta">Quarta</button>
-                                <button type="button" class="dia-btn" data-dia="quinta">Quinta</button>
-                                <button type="button" class="dia-btn" data-dia="sexta">Sexta</button>
-                                <button type="button" class="dia-btn" data-dia="sabado">Sábado</button>
-                                <button type="button" class="dia-btn" data-dia="domingo">Domingo</button>
-                            </div>
-                            <input type="hidden" name="dias_personalizado" id="dias_personalizado">
-                        </div>
-                        <div class="form-group">
-                            <label>Horário de Entrada:</label>
-                            <input type="time" name="hora_entrada_personalizado" id="hora_entrada_personalizado">
-                        </div>
-                        <div class="form-group">
-                            <label>Horário de Saída:</label>
-                            <input type="time" name="hora_saida_personalizado" id="hora_saida_personalizado">
-                        </div>
-                        <div class="form-group">
-                            <label>Intervalo para Almoço:</label>
-                            <div class="intervalo-group">
-                                <input type="time" name="almoco_inicio_personalizado" id="almoco_inicio_personalizado" placeholder="Início">
-                                <span>até</span>
-                                <input type="time" name="almoco_fim_personalizado" id="almoco_fim_personalizado" placeholder="Fim">
-                            </div>
+                    <div class="form-group">
+                        <label>Horário de Saída:</label>
+                        <input type="time" name="hora_saida" id="hora_saida">
+                    </div>
+                    <div class="form-group">
+                        <label>Intervalo para Almoço:</label>
+                        <div class="intervalo-group">
+                            <input type="time" name="almoco_inicio" id="almoco_inicio" placeholder="Início">
+                            <span>até</span>
+                            <input type="time" name="almoco_fim" id="almoco_fim" placeholder="Fim">
                         </div>
                     </div>
                 </div>
@@ -1833,7 +2457,7 @@ while ($row = $result_ativos->fetch_assoc()) {
     <div class="modal-banco-content">
         <span class="close" onclick="fecharModal('modal-banco')">&times;</span>
         <h2>Editar Banco</h2>
-        <form id="form-editar-banco" method="POST" action="rh_config.php">
+        <form id="form-editar-banco" method="POST">
             <input type="hidden" name="banco_id" id="banco_id">
             <div class="form-group">
                 <label for="edit_banco_nome">Nome do Banco:</label>
@@ -1853,7 +2477,7 @@ while ($row = $result_ativos->fetch_assoc()) {
     <div class="modal-banco-content">
         <span class="close" onclick="fecharModal('modal-departamento')">&times;</span>
         <h2>Editar Departamento</h2>
-        <form id="form-editar-departamento" method="POST" action="rh_config.php">
+        <form id="form-editar-departamento" method="POST">
             <input type="hidden" name="departamento_id" id="edit_departamento_id">
             <div class="form-group">
                 <label for="edit_departamento_nome">Nome do Departamento:</label>
@@ -1869,7 +2493,7 @@ while ($row = $result_ativos->fetch_assoc()) {
     <div class="modal-banco-content">
         <span class="close" onclick="fecharModal('modal-cargo')">&times;</span>
         <h2>Editar Cargo</h2>
-        <form id="form-editar-cargo" method="POST" action="rh_config.php">
+        <form id="form-editar-cargo" method="POST">
             <input type="hidden" name="cargo_id" id="edit_cargo_id">
             <div class="form-group">
                 <label for="edit_cargo_nome">Nome do Cargo:</label>
@@ -1906,61 +2530,102 @@ while ($row = $result_ativos->fetch_assoc()) {
     </div>
 </div>
 
+<!-- Modal de Edição de Subsídio -->
+<div id="modal-subsidio" class="modal-subsidio">
+    <div class="modal-subsidio-content">
+        <span class="close" onclick="fecharModal('modal-subsidio')">&times;</span>
+        <h2>Editar Subsídio</h2>
+        <form id="form-editar-subsidio" method="POST">
+            <input type="hidden" name="subsidio_id" id="edit_subsidio_id">
+            <div class="form-group">
+                <label for="edit_subsidio_nome">Nome do Subsídio:</label>
+                <input type="text" name="edit_subsidio_nome" id="edit_subsidio_nome" required>
+            </div>
+            <div class="form-group">
+                <label for="edit_subsidio_tipo">Tipo:</label>
+                <select name="edit_subsidio_tipo" id="edit_subsidio_tipo" required>
+                    <option value="valor_fixo">Valor Fixo</option>
+                    <option value="percentagem">Percentagem</option>
+                </select>
+            </div>
+            <div class="form-group" id="edit_subsidio_unidade_tipo" style="display: none;">
+                <label for="edit_subsidio_unidade_valor_fixo">Base de Cálculo:</label>
+                <select name="edit_subsidio_unidade_valor_fixo" id="edit_subsidio_unidade_valor_fixo">
+                    <option value="/dia útil">Por Dia Útil</option>
+                    <option value="/mês">Por Mês</option>
+                </select>
+            </div>
+            <div class="form-group" id="edit_subsidio_valor_padrao_group">
+                <label for="edit_subsidio_valor_padrao">Valor Padrão:</label>
+                <input type="number" name="edit_subsidio_valor_padrao" id="edit_subsidio_valor_padrao" step="0.01" required>
+            </div>
+            <button type="submit" name="edit_subsidio" class="btn-primary">Salvar Alterações</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal de Funcionários para Subsídios -->
+<div id="modal-funcionarios-subsidio" class="modal-subsidio">
+    <div class="modal-subsidio-content" style="width: 80%; max-width: 1000px;">
+        <span class="close" onclick="fecharModal('modal-funcionarios-subsidio')">&times;</span>
+        <h2>Gerenciar Subsídio: <span id="subsidio-nome-modal"></span></h2>
+        <div class="funcionarios-lista">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Cargo</th>
+                        <th>Departamento</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-funcionarios-subsidio">
+                    <!-- Será preenchido via JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <script src="../js/theme.js"></script>
 <script>
-// Função para fechar modais
-function fecharModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
-}
-
-// Função para editar departamento
 function editarDepartamento(id, nome) {
-    console.log('Editar Departamento:', id, nome); // Debug
     const modal = document.getElementById('modal-departamento');
+    const form = document.getElementById('form-editar-departamento');
+    
     document.getElementById('edit_departamento_id').value = id;
     document.getElementById('edit_departamento_nome').value = nome;
+    
     modal.style.display = 'block';
 }
 
-// Função para editar cargo
+function excluirDepartamento(id) {
+    if(confirm('Tem certeza que deseja excluir este departamento?')) {
+        window.location.href = `gerenciar_departamentos.php?acao=excluir&id=${id}`;
+    }
+}
+
 function editarCargo(id, nome, salario, departamento_id) {
-    console.log('Editar Cargo:', id, nome, salario, departamento_id); // Debug
     const modal = document.getElementById('modal-cargo');
+    const form = document.getElementById('form-editar-cargo');
+    
     document.getElementById('edit_cargo_id').value = id;
     document.getElementById('edit_cargo_nome').value = nome;
     document.getElementById('edit_cargo_salario').value = salario;
     document.getElementById('edit_cargo_departamento').value = departamento_id;
+    
     modal.style.display = 'block';
 }
 
-// Função para editar banco
-function editarBanco(id, nome, codigo) {
-    console.log('Editar Banco:', id, nome, codigo); // Debug
-    const modal = document.getElementById('modal-banco');
-    document.getElementById('banco_id').value = id;
-    document.getElementById('edit_banco_nome').value = nome;
-    document.getElementById('edit_banco_codigo').value = codigo;
-    modal.style.display = 'block';
-}
-
-// Função para excluir banco
-function excluirBanco(id) {
-    console.log('Excluir Banco:', id); // Debug
-    if (confirm('Tem certeza que deseja excluir este banco?')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.innerHTML = `
-            <input type="hidden" name="banco_id" value="${id}">
-            <input type="hidden" name="excluir_banco" value="1">
-        `;
-        document.body.appendChild(form);
-        form.submit();
+function excluirCargo(id) {
+    if(confirm('Tem certeza que deseja excluir este cargo?')) {
+        window.location.href = `gerenciar_cargos.php?acao=excluir&id=${id}`;
     }
 }
 
-// Função para abrir o modal de políticas
+// Função para abrir o modal
 function abrirModal(tipo) {
-    console.log('Abrir Modal Política:', tipo); // Debug
     const modal = document.getElementById('modal');
     const modalTitulo = document.getElementById('modal-titulo');
     const form = document.getElementById('form-politica');
@@ -1970,75 +2635,32 @@ function abrirModal(tipo) {
     const camposVestimenta = document.getElementById('campos-vestimenta');
     const camposPadrao = document.getElementById('campos-padrao');
     
-    // Ocultar todos os campos específicos primeiro
-    camposHorario.style.display = 'none';
-    camposHomeoffice.style.display = 'none';
-    camposVestimenta.style.display = 'none';
-    camposPadrao.style.display = 'none';
-    
-    // Resetar classes 'selecionado' dos botões de dias
-    document.querySelectorAll('.dia-btn').forEach(btn => btn.classList.remove('selecionado'));
-    document.getElementById('dias_selecionados').value = '';
-    document.getElementById('dias_homeoffice').value = '';
-
     // Definir título e valores baseado no tipo
     switch(tipo) {
         case 'horario':
             modalTitulo.textContent = 'Editar Horário de Trabalho';
             politicaTipo.value = 'horario';
             camposHorario.style.display = 'block';
+            camposHomeoffice.style.display = 'none';
+            camposVestimenta.style.display = 'none';
+            camposPadrao.style.display = 'none';
             
             // Carregar valores existentes ou usar padrão
-            const horarioData = <?php echo isset($politicas['horario']) ? json_encode($politicas['horario']['valor']) : 'null'; ?>;
-
-            // Limpar campos de horário antes de carregar novos dados
-            document.getElementById('hora_entrada').value = '';
-            document.getElementById('hora_saida').value = '';
-            document.getElementById('almoco_inicio').value = '';
-            document.getElementById('almoco_fim').value = '';
-
-            if (horarioData && horarioData !== 'null') {
-                try {
-                    const dados = JSON.parse(horarioData);
-                    const dias = dados.dias ? dados.dias.split(',') : [];
-                    dias.forEach(dia => {
-                        const btn = document.querySelector(`.dia-btn[data-dia="${dia}"]`);
-                        if (btn) btn.classList.add('selecionado');
-                    });
-                    
-                    if(dados.horario) {
-                        document.getElementById('hora_entrada').value = dados.horario.entrada || '';
-                        document.getElementById('hora_saida').value = dados.horario.saida || '';
-                        if(dados.horario.almoco) {
-                             document.getElementById('almoco_inicio').value = dados.horario.almoco.inicio || '';
-                             document.getElementById('almoco_fim').value = dados.horario.almoco.fim || '';
-                        }
-                    }
-                    // Definir o tipo de configuração no select (assumindo que a política de horário salva era 'turno')
-                    document.getElementById('tipo_config_horario').value = 'turno'; // Ou 'personalizado' se aplicável
-                    toggleTipoHorario(); // Atualizar visibilidade dos campos
-
-                } catch (e) {
-                    console.error("Erro ao parsear dados de horário:", e);
-                    // Se houver erro ao carregar dados, exibir campos de turno por padrão
-                    document.getElementById('tipo_config_horario').value = 'turno';
-                    toggleTipoHorario();
-                     // Valores padrão se não conseguir carregar
-                    document.querySelectorAll('.dia-btn').forEach(btn => {
-                        if (['segunda', 'terca', 'quarta', 'quinta', 'sexta'].includes(btn.dataset.dia)) {
-                            btn.classList.add('selecionado');
-                        }
-                    });
-                     document.getElementById('hora_entrada').value = '08:00';
-                     document.getElementById('hora_saida').value = '18:00';
-                     document.getElementById('almoco_inicio').value = '12:00';
-                     document.getElementById('almoco_fim').value = '13:00';
-
-                }
+            const horarioData = <?php echo isset($politicas['horario']) ? json_encode($politicas['horario']) : 'null'; ?>;
+            if (horarioData) {
+                const dias = horarioData.valor.split('|')[0].split(',');
+                dias.forEach(dia => {
+                    const btn = document.querySelector(`.dia-btn[data-dia="${dia}"]`);
+                    if (btn) btn.classList.add('selecionado');
+                });
+                
+                const horarios = horarioData.valor.split('|')[1].split(',');
+                document.getElementById('hora_entrada').value = horarios[0];
+                document.getElementById('hora_saida').value = horarios[1];
+                document.getElementById('almoco_inicio').value = horarios[2];
+                document.getElementById('almoco_fim').value = horarios[3];
             } else {
-                // Valores padrão e seleção padrão 'turno'
-                document.getElementById('tipo_config_horario').value = 'turno';
-                toggleTipoHorario();
+                // Valores padrão
                 document.querySelectorAll('.dia-btn').forEach(btn => {
                     if (['segunda', 'terca', 'quarta', 'quinta', 'sexta'].includes(btn.dataset.dia)) {
                         btn.classList.add('selecionado');
@@ -2054,81 +2676,39 @@ function abrirModal(tipo) {
         case 'homeoffice':
             modalTitulo.textContent = 'Editar Política de Home Office';
             politicaTipo.value = 'homeoffice';
+            camposHorario.style.display = 'none';
             camposHomeoffice.style.display = 'block';
+            camposVestimenta.style.display = 'none';
+            camposPadrao.style.display = 'none';
+            
             // Carregar valores existentes ou usar padrão
             const homeofficeData = <?php echo isset($politicas['homeoffice']) ? json_encode($politicas['homeoffice']) : 'null'; ?>;
-            document.querySelectorAll('#campos-homeoffice .dia-btn').forEach(b => b.classList.remove('selecionado'));
-            if (homeofficeData && homeofficeData !== 'null') {
-                 try {
-                    const dados = JSON.parse(homeofficeData);
-                    const dias = parseInt(dados.valor);
-                    document.querySelector(`.dia-btn[data-dias="${dias}"]`)?.classList.add('selecionado');
-                    document.getElementById('dias_homeoffice').value = dias;
-                 } catch(e) {
-                     console.error("Erro ao parsear dados de homeoffice:", e);
-                     // Valor padrão
-                     document.querySelector('.dia-btn[data-dias="2"]').classList.add('selecionado');
-                     document.getElementById('dias_homeoffice').value = '2';
-                 }
+            if (homeofficeData) {
+                const dias = parseInt(homeofficeData.valor);
+                document.querySelector(`.dia-btn[data-dias="${dias}"]`)?.classList.add('selecionado');
             } else {
-                // Valor padrão
+                // Valores padrão
                 document.querySelector('.dia-btn[data-dias="2"]').classList.add('selecionado');
-                document.getElementById('dias_homeoffice').value = '2';
             }
             break;
             
         case 'vestimenta':
             modalTitulo.textContent = 'Editar Código de Vestimenta';
             politicaTipo.value = 'vestimenta';
+            camposHorario.style.display = 'none';
+            camposHomeoffice.style.display = 'none';
             camposVestimenta.style.display = 'block';
+            camposPadrao.style.display = 'none';
+            
             // Carregar valores existentes ou usar padrão
             const vestimentaData = <?php echo isset($politicas['vestimenta']) ? json_encode($politicas['vestimenta']) : 'null'; ?>;
-            document.getElementById('titulo_vestimenta').value = '';
-            document.getElementById('descricao_vestimenta').value = '';
-            if (vestimentaData && vestimentaData !== 'null') {
-                 try {
-                    const dados = JSON.parse(vestimentaData);
-                    document.getElementById('titulo_vestimenta').value = dados.titulo || '';
-                    document.getElementById('descricao_vestimenta').value = dados.descricao || '';
-                 } catch(e) {
-                      console.error("Erro ao parsear dados de vestimenta:", e);
-                     // Valores padrão
-                     document.getElementById('titulo_vestimenta').value = 'Vestuário casual e profissional';
-                     document.getElementById('descricao_vestimenta').value = '';
-                 }
+            if (vestimentaData) {
+                document.getElementById('titulo_vestimenta').value = vestimentaData.titulo;
+                document.getElementById('descricao_vestimenta').value = vestimentaData.descricao;
             } else {
                 // Valores padrão
                 document.getElementById('titulo_vestimenta').value = 'Vestuário casual e profissional';
                 document.getElementById('descricao_vestimenta').value = '';
-            }
-            break;
-
-        default:
-            // Caso para outras políticas que usam campos padrão
-            modalTitulo.textContent = 'Editar Política'; // Título genérico
-            politicaTipo.value = tipo; // Define o tipo da política
-            camposPadrao.style.display = 'block';
-            
-            // Carregar valores existentes ou usar padrão
-            const politicaPadraoData = <?php echo json_encode($politicas); ?>;
-            if (politicaPadraoData && politicaPadraoData[tipo]) {
-                 try {
-                    const dados = politicaPadraoData[tipo];
-                    document.getElementById('titulo').value = dados.titulo || '';
-                    document.getElementById('descricao').value = dados.descricao || '';
-                    document.getElementById('valor').value = dados.valor || '';
-                 } catch(e) {
-                     console.error("Erro ao carregar dados de política padrão:", e);
-                     // Limpar campos se houver erro
-                     document.getElementById('titulo').value = '';
-                     document.getElementById('descricao').value = '';
-                     document.getElementById('valor').value = '';
-                 }
-            } else {
-                 // Limpar campos se não houver dados
-                 document.getElementById('titulo').value = '';
-                 document.getElementById('descricao').value = '';
-                 document.getElementById('valor').value = '';
             }
             break;
     }
@@ -2136,8 +2716,18 @@ function abrirModal(tipo) {
     modal.style.display = 'block';
 }
 
-// Event Listeners
-document.addEventListener('DOMContentLoaded', function() {
+// Fechar o modal quando clicar no X
+document.querySelector('.close').onclick = function() {
+    document.getElementById('modal').style.display = 'none';
+}
+
+// Fechar o modal quando clicar fora dele
+window.onclick = function(event) {
+    if (event.target.classList.contains('modal') || event.target.classList.contains('modal-banco')) {
+        event.target.style.display = 'none';
+    }
+}
+
 // Adicionar evento de clique para os botões de dia
 document.querySelectorAll('.dia-btn').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -2145,6 +2735,12 @@ document.querySelectorAll('.dia-btn').forEach(btn => {
         atualizarDiasSelecionados();
     });
 });
+
+function atualizarDiasSelecionados() {
+    const diasSelecionados = Array.from(document.querySelectorAll('.dia-btn.selecionado'))
+        .map(btn => btn.dataset.dia);
+    document.getElementById('dias_selecionados').value = diasSelecionados.join(',');
+}
 
 // Adicionar evento de clique para os botões de home office
 document.querySelectorAll('#campos-homeoffice .dia-btn').forEach(btn => {
@@ -2164,63 +2760,296 @@ document.getElementById('form-politica').addEventListener('submit', function(e) 
     document.getElementById('dias_homeoffice').value = diasHomeoffice;
 });
 
-    // Fechar modais ao clicar fora deles
-    window.onclick = function(event) {
-        if (event.target.classList.contains('modal') || event.target.classList.contains('modal-banco')) {
-            event.target.style.display = 'none';
-        }
-    }
+// Funções para gerenciar bancos
+function editarBanco(id, nome, codigo) {
+    const modal = document.getElementById('modal-banco');
+    const form = document.getElementById('form-editar-banco');
+    
+    document.getElementById('banco_id').value = id;
+    document.getElementById('edit_banco_nome').value = nome;
+    document.getElementById('edit_banco_codigo').value = codigo;
+    
+    modal.style.display = 'block';
+}
 
-    // Atualizar dias selecionados antes do envio do formulário
-    document.getElementById('form-politica').addEventListener('submit', function(e) {
-        const tipo = document.getElementById('politica-tipo').value;
-        if (tipo === 'horario') {
-            atualizarDiasSelecionados();
-        }
+function excluirBanco(id) {
+    if (confirm('Tem certeza que deseja excluir este banco?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = `
+            <input type="hidden" name="banco_id" value="${id}">
+            <input type="hidden" name="excluir_banco" value="1">
+        `;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Fechar o modal de banco
+document.querySelector('.modal-banco .close').onclick = function() {
+    document.getElementById('modal-banco').style.display = 'none';
+}
+
+// Fechar o modal quando clicar fora dele
+window.onclick = function(event) {
+    if (event.target.classList.contains('modal') || event.target.classList.contains('modal-banco')) {
+        event.target.style.display = 'none';
+    }
+}
+
+function fecharModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+// Atualizar valores dos sliders
+document.querySelectorAll('#subsidios .slider').forEach(slider => {
+    slider.addEventListener('input', function() {
+        this.nextElementSibling.textContent = this.value + '%';
     });
 });
 
-function atualizarDiasSelecionados() {
-    const diasSelecionados = Array.from(document.querySelectorAll('.dia-btn.selecionado'))
-        .map(btn => btn.dataset.dia);
-    document.getElementById('dias_selecionados').value = diasSelecionados.join(',');
-}
+// Atualizar valores dos inputs numéricos
+document.querySelectorAll('#subsidios .valor-subsidio').forEach(input => {
+    input.addEventListener('input', function() {
+        const min = parseInt(this.min);
+        const max = parseInt(this.max);
+        let value = parseInt(this.value);
+        
+        if (value < min) this.value = min;
+        if (value > max) this.value = max;
+    });
+});
 
-function toggleTipoHorario() {
-    const tipo = document.getElementById('tipo_config_horario').value;
-    const camposTurno = document.getElementById('campos-turno');
-    const camposPersonalizado = document.getElementById('campos-personalizado');
+// Exibir/ocultar a opção Dia/Mês com base no tipo de subsídio selecionado
+document.getElementById('novo_subsidio_tipo').addEventListener('change', function() {
+    const unidadeTipoDiv = document.getElementById('novo_subsidio_unidade_tipo');
+    const valorPadraoDiv = document.getElementById('novo_subsidio_valor_padrao').closest('.form-group');
+    const valorPadraoLabel = document.querySelector('label[for="novo_subsidio_valor_padrao"]');
     
-    if (tipo === 'turno') {
-        camposTurno.style.display = 'block';
-        camposPersonalizado.style.display = 'none';
+    if (this.value === 'valor_fixo') {
+        unidadeTipoDiv.style.display = 'block';
+        valorPadraoDiv.style.display = 'block';
+        valorPadraoLabel.textContent = 'Valor Padrão:';
+        document.getElementById('novo_subsidio_valor_padrao').placeholder = 'Ex: 1000';
+    } else if (this.value === 'percentagem') {
+        unidadeTipoDiv.style.display = 'none';
+        valorPadraoDiv.style.display = 'block';
+        valorPadraoLabel.textContent = 'Porcentagem (0-100):';
+        document.getElementById('novo_subsidio_valor_padrao').placeholder = 'Ex: 15';
     } else {
-        camposTurno.style.display = 'none';
-        camposPersonalizado.style.display = 'block';
+        unidadeTipoDiv.style.display = 'none';
+        valorPadraoDiv.style.display = 'none';
+    }
+});
+
+function editarSubsidio(subsidio) {
+    const modal = document.getElementById('modal-subsidio');
+    const form = document.getElementById('form-editar-subsidio');
+    
+    // Preencher o formulário com os dados do subsídio
+    document.getElementById('edit_subsidio_id').value = subsidio.id;
+    document.getElementById('edit_subsidio_nome').value = subsidio.nome;
+    document.getElementById('edit_subsidio_tipo').value = subsidio.tipo;
+    document.getElementById('edit_subsidio_valor_padrao').value = subsidio.valor_padrao;
+    
+    // Ajustar campos baseado no tipo
+    const unidadeTipoDiv = document.getElementById('edit_subsidio_unidade_tipo');
+    const valorPadraoLabel = document.querySelector('label[for="edit_subsidio_valor_padrao"]');
+    
+    if (subsidio.tipo === 'valor_fixo') {
+        unidadeTipoDiv.style.display = 'block';
+        valorPadraoLabel.textContent = 'Valor Padrão:';
+        document.getElementById('edit_subsidio_unidade_valor_fixo').value = subsidio.unidade.replace('Kz', '');
+    } else {
+        unidadeTipoDiv.style.display = 'none';
+        valorPadraoLabel.textContent = 'Porcentagem (0-100):';
+    }
+    
+    modal.style.display = 'block';
+}
+
+function excluirSubsidio(id) {
+    if (confirm('Tem certeza que deseja excluir este subsídio?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = `
+            <input type="hidden" name="excluir_subsidio" value="1">
+            <input type="hidden" name="subsidio_id" value="${id}">
+        `;
+        document.body.appendChild(form);
+        form.submit();
     }
 }
 
-// Atualizar campos quando um turno é selecionado
-document.getElementById('turno_id').addEventListener('change', function() {
-    const turnoId = this.value;
-    if (turnoId) {
-        // Fazer uma requisição AJAX para buscar os dados do turno
-        fetch(`get_turno.php?id=${turnoId}`)
-            .then(response => response.json())
-            .then(data => {
-                // Preencher os campos com os dados do turno
-                document.getElementById('hora_entrada_personalizado').value = data.hora_entrada;
-                document.getElementById('hora_saida_personalizado').value = data.hora_saida;
-                document.getElementById('almoco_inicio_personalizado').value = data.almoco_inicio;
-                document.getElementById('almoco_fim_personalizado').value = data.almoco_fim;
-                
-                // Selecionar os dias
-                const dias = data.dias_semana.split(',');
-                document.querySelectorAll('.dia-btn').forEach(btn => {
-                    btn.classList.toggle('selecionado', dias.includes(btn.dataset.dia));
-                });
-            });
+// Atualizar campos do modal de edição quando o tipo é alterado
+document.getElementById('edit_subsidio_tipo').addEventListener('change', function() {
+    const unidadeTipoDiv = document.getElementById('edit_subsidio_unidade_tipo');
+    const valorPadraoLabel = document.querySelector('label[for="edit_subsidio_valor_padrao"]');
+    
+    if (this.value === 'valor_fixo') {
+        unidadeTipoDiv.style.display = 'block';
+        valorPadraoLabel.textContent = 'Valor Padrão:';
+    } else {
+        unidadeTipoDiv.style.display = 'none';
+        valorPadraoLabel.textContent = 'Porcentagem (0-100):';
     }
+});
+
+// Função para abrir o modal de funcionários
+function abrirModalFuncionarios(subsidioId, subsidioNome, tipoSubsidio) {
+    console.log('DEBUG: abrirModalFuncionarios chamado');
+    console.log('DEBUG: subsidioId:', subsidioId);
+    console.log('DEBUG: subsidioNome:', subsidioNome);
+    console.log('DEBUG: tipoSubsidio:', tipoSubsidio);
+
+    const modal = document.getElementById('modal-funcionarios-subsidio');
+    document.getElementById('subsidio-nome-modal').textContent = subsidioNome;
+
+    // Fazer requisição AJAX para buscar funcionários
+    const fetchUrl = `get_funcionarios_subsidio.php?subsidio_id=${subsidioId}&tipo=${tipoSubsidio}`;
+    console.log('DEBUG: Fetch URL:', fetchUrl);
+
+    fetch(fetchUrl)
+        .then(response => {
+            console.log('DEBUG: Resposta da requisição recebida.', response);
+            if (!response.ok) {
+                console.error('ERRO: Resposta da rede não foi ok', response.statusText);
+                return response.text().then(text => {
+                    console.error('ERRO: Corpo da resposta:', text);
+                    throw new Error('Resposta da rede não foi ok');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('DEBUG: Dados de funcionários recebidos:', data);
+            const tbody = document.getElementById('lista-funcionarios-subsidio');
+            tbody.innerHTML = '';
+
+            if (data.error) {
+                console.error('ERRO: Erro retornado pelo script PHP:', data.error);
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">Erro ao carregar funcionários: ${data.error}</td></tr>`;
+                return;
+            }
+
+            if (data.length === 0) {
+                console.log('DEBUG: Nenhum funcionário ativo encontrado para este subsídio.');
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Nenhum funcionário ativo encontrado.</td></tr>';
+            } else {
+                 data.forEach(funcionario => {
+                    console.log('DEBUG: Processando funcionário:', funcionario);
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${funcionario.nome || 'N/A'}</td>
+                        <td>${funcionario.cargo || 'N/A'}</td>
+                        <td>${funcionario.departamento || 'N/A'}</td>
+                        <td>
+                            <span class="status-badge ${funcionario.ativo ? 'ativo' : 'inativo'}">
+                                ${funcionario.ativo ? 'Ativo' : 'Inativo'}
+                            </span>
+                        </td>
+                        <td>
+                            <label class="switch">
+                                <input type="checkbox" 
+                                       ${funcionario.ativo ? 'checked' : ''} 
+                                       onchange="toggleSubsidioFuncionario(${funcionario.id_fun}, ${subsidioId}, '${tipoSubsidio}', this)">
+                                <span class="slider-switch"></span>
+                            </label>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('ERRO: Erro na requisição Fetch ou processamento:', error);
+            const tbody = document.getElementById('lista-funcionarios-subsidio');
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Erro ao carregar funcionários. Por favor, tente novamente.</td></tr>';
+        });
+
+    modal.style.display = 'block';
+}
+
+// Função para alternar o status do subsídio para um funcionário
+function toggleSubsidioFuncionario(funcionarioId, subsidioId, tipoSubsidio, checkbox) {
+    const ativo = checkbox.checked;
+    
+    // Validar tipo de subsídio
+    if (!['obrigatorio', 'opcional', 'personalizado'].includes(tipoSubsidio)) {
+        console.error('Tipo de subsídio inválido:', tipoSubsidio);
+        alert('Tipo de subsídio inválido');
+        checkbox.checked = !ativo;
+        return;
+    }
+    
+    // Log dos dados que serão enviados
+    console.log('DEBUG: Enviando dados:', {
+        funcionario_id: funcionarioId,
+        subsidio_id: subsidioId,
+        tipo_subsidio: tipoSubsidio,
+        ativo: ativo
+    });
+    
+    fetch('toggle_subsidio_funcionario.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            funcionario_id: funcionarioId,
+            subsidio_id: subsidioId,
+            tipo_subsidio: tipoSubsidio,
+            ativo: ativo
+        })
+    })
+    .then(response => {
+        console.log('DEBUG: Status da resposta:', response.status);
+        return response.text().then(text => {
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.error('DEBUG: Erro ao fazer parse da resposta:', text);
+                throw new Error('Resposta inválida do servidor');
+            }
+        });
+    })
+    .then(data => {
+        console.log('DEBUG: Resposta do servidor:', data);
+        if (data.success) {
+            // Atualizar o badge de status
+            const tr = checkbox.closest('tr');
+            const statusBadge = tr.querySelector('.status-badge');
+            statusBadge.className = `status-badge ${ativo ? 'ativo' : 'inativo'}`;
+            statusBadge.textContent = ativo ? 'Ativo' : 'Inativo';
+        } else {
+            // Reverter o checkbox se houver erro
+            checkbox.checked = !ativo;
+            console.error('DEBUG: Erro retornado pelo servidor:', data.error);
+            alert(data.error || 'Erro ao atualizar o status do subsídio');
+        }
+    })
+    .catch(error => {
+        console.error('DEBUG: Erro na requisição:', error);
+        checkbox.checked = !ativo;
+        alert('Erro ao atualizar o status do subsídio. Por favor, tente novamente.');
+    });
+}
+
+// Adicionar evento de clique nos cards de subsídio
+document.querySelectorAll('.subsidio-card').forEach(card => {
+    card.addEventListener('click', function(e) {
+        // Não abrir o modal se clicar nos botões de ação
+        if (e.target.closest('.subsidio-actions')) {
+            return;
+        }
+        
+        const subsidioId = this.dataset.subsidioId || '0';
+        const subsidioNome = this.querySelector('h3').textContent;
+        const tipoSubsidio = this.classList.contains('obrigatorio') ? 'obrigatorio' : 
+                           this.classList.contains('opcional') ? 'opcional' : 'personalizado';
+        
+        abrirModalFuncionarios(subsidioId, subsidioNome, tipoSubsidio);
+    });
 });
 </script>
 </body>

@@ -24,12 +24,102 @@ if (!isset($_SESSION['id_empresa'])) {
 }
 $id_empresa = $_SESSION['id_empresa'];  
 
-$sql_novos_funcionarios = "
-    SELECT id_fun, nome, departamento, foto 
+// Consulta para buscar os próximos aniversários
+$sql_aniversarios = "
+    SELECT id_fun, nome, foto, data_nascimento,
+           DAY(data_nascimento) as dia,
+           MONTH(data_nascimento) as mes,
+           -- Calcula a data do próximo aniversário (neste ano ou no próximo)
+           CASE 
+               WHEN DATE_FORMAT(data_nascimento, '%m-%d') >= DATE_FORMAT(CURRENT_DATE, '%m-%d')
+               THEN DATE_FORMAT(data_nascimento, '%Y-%m-%d') + INTERVAL (YEAR(CURRENT_DATE) - YEAR(data_nascimento)) YEAR
+               ELSE DATE_FORMAT(data_nascimento, '%Y-%m-%d') + INTERVAL (YEAR(CURRENT_DATE) - YEAR(data_nascimento) + 1) YEAR
+           END as proxima_data_aniversario
     FROM funcionario 
-    WHERE data_admissao >= NOW() - INTERVAL ? DAY
-    AND empresa_id = ?
-    ORDER BY data_admissao DESC
+    WHERE empresa_id = ?
+    ORDER BY proxima_data_aniversario ASC
+    LIMIT 3";
+
+$stmt_aniversarios = $conn->prepare($sql_aniversarios);
+if (!$stmt_aniversarios) {
+    die("Erro na preparação da consulta de aniversários: " . $conn->error);
+}
+$stmt_aniversarios->bind_param("i", $id_empresa);
+$stmt_aniversarios->execute();
+$result_aniversarios = $stmt_aniversarios->get_result();
+
+$proximos_aniversarios = [];
+while ($row = $result_aniversarios->fetch_assoc()) {
+    // Formatar a data para exibição (dia/mês)
+    $data_aniversario = new DateTime($row['proxima_data_aniversario']);
+    $row['data_formatada'] = $data_aniversario->format('d/m');
+    $proximos_aniversarios[] = $row;
+}
+
+$stmt_aniversarios->close();
+
+// Consulta para buscar os feriados angolanos
+$sql_feriados = "
+    SELECT 
+        id,
+        data_feriado,
+        nome_feriado,
+        -- Calcula a data da próxima ocorrência do feriado (neste ano ou no próximo)
+        CASE 
+            WHEN DATE_FORMAT(data_feriado, '%m-%d') >= DATE_FORMAT(CURRENT_DATE, '%m-%d')
+            THEN data_feriado + INTERVAL (YEAR(CURRENT_DATE) - YEAR(data_feriado)) YEAR
+            ELSE data_feriado + INTERVAL (YEAR(CURRENT_DATE) - YEAR(data_feriado) + 1) YEAR
+        END as proxima_data_feriado
+    FROM feriados_angola
+    ORDER BY proxima_data_feriado ASC
+    LIMIT 3";
+
+$stmt_feriados = $conn->prepare($sql_feriados);
+if (!$stmt_feriados) {
+    die("Erro na preparação da consulta de feriados: " . $conn->error);
+}
+$stmt_feriados->execute();
+$result_feriados = $stmt_feriados->get_result();
+
+$proximos_feriados = [];
+while ($row = $result_feriados->fetch_assoc()) {
+    // Formatar a data para exibição (dia/mês)
+    $data_feriado = new DateTime($row['proxima_data_feriado']);
+    $row['data_feriado_formatada'] = $data_feriado->format('d/m');
+    $proximos_feriados[] = $row;
+}
+
+$stmt_feriados->close();
+
+// Consulta para buscar todos os feriados do ano atual para o calendário
+$sql_feriados_calendario = "
+    SELECT 
+        data_feriado,
+        nome_feriado
+    FROM feriados_angola
+    WHERE YEAR(data_feriado) = YEAR(CURRENT_DATE)";
+
+$stmt_feriados_calendario = $conn->prepare($sql_feriados_calendario);
+if (!$stmt_feriados_calendario) {
+    die("Erro na preparação da consulta de feriados do calendário: " . $conn->error);
+}
+$stmt_feriados_calendario->execute();
+$result_feriados_calendario = $stmt_feriados_calendario->get_result();
+
+$feriados_calendario = [];
+while ($row = $result_feriados_calendario->fetch_assoc()) {
+    $feriados_calendario[] = $row;
+}
+
+$stmt_feriados_calendario->close();
+
+$sql_novos_funcionarios = "
+    SELECT f.id_fun, f.nome, d.nome as departamento_nome, f.foto 
+    FROM funcionario f
+    LEFT JOIN departamentos d ON f.departamento = d.id
+    WHERE f.data_admissao >= NOW() - INTERVAL ? DAY
+    AND f.empresa_id = ?
+    ORDER BY f.data_admissao DESC
     LIMIT 4";
 
 $stmt_novos_funcionarios = $conn->prepare($sql_novos_funcionarios);
@@ -50,7 +140,6 @@ $stmt_novos_funcionarios->close();
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-    <link rel="stylesheet" href="UI.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
     <meta charset="UTF-8">
     <script src="../js/theme.js"></script>
@@ -79,7 +168,7 @@ $stmt_novos_funcionarios->close();
 }
 
 .header-buttons {
-    display: flex;           
+    display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 15px; 
@@ -93,6 +182,7 @@ $stmt_novos_funcionarios->close();
 .btn-enter {
     background-color: hwb(158 24% 29%);
     margin-left: 0;
+    margin-right: auto;
 }
 
 .time-container {
@@ -167,6 +257,30 @@ body.dark .birthday-name {
     color: #aaaaaa;
 }
 
+.calendar-day.feriado {
+    background-color: #ffebee;
+    color: #d32f2f;
+    font-weight: bold;
+}
+
+/* Adicionado para formatar os itens de feriado */
+.holiday-item {
+    display: flex;
+    align-items: flex-start; /* Alinha o topo dos elementos */
+    margin-bottom: 10px;
+}
+
+.holiday-date {
+    flex-shrink: 0; /* Impede que a data diminua */
+    width: 60px; /* Largura fixa para a data */
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+.holiday1 {
+    flex-grow: 1; /* Permite que o nome ocupe o espaço restante */
+    word-break: break-word; /* Permite quebra de palavra se necessário */
+}
 
 </style>
 <body>
@@ -276,23 +390,22 @@ body.dark .birthday-name {
                     </div>
 
                     <div class="birthdays-container">
-                        <div class="birthday-item">
-                            <div class="birthday-date">21, Maio</div>
-                            <img src="icones/icons-sam-18.svg" alt="" class="birthday-avatar" >
-                            <div class="birthday-name">Josilde Costa</div>
-                        </div>
-
-                        <div class="birthday-item">
-                            <div class="birthday-date">15, Setembro</div>
-                            <img src="icones/icons-sam-18.svg" alt="" class="birthday-avatar">
-                            <div class="birthday-name">Kelson Mota</div>
-                        </div>
-
-                        <div class="birthday-item">
-                            <div class="birthday-date">05, Dezembro</div>
-                            <img src="icones/icons-sam-18.svg" alt="" class="birthday-avatar">
-                            <div class="birthday-name">Kimi Carvalho</div>
-                        </div>
+                        <?php if (!empty($proximos_aniversarios)): ?>
+                            <?php foreach ($proximos_aniversarios as $aniversariante): ?>
+                                <div class="birthday-item">
+                                    <div class="birthday-date"><?php echo $aniversariante['data_formatada']; ?></div>
+                                    <?php
+                                    $foto = !empty($aniversariante['foto']) && file_exists($aniversariante['foto']) ? $aniversariante['foto'] : 'icones/icons-sam-18.svg';
+                                    ?>
+                                    <img src="<?php echo $foto; ?>" alt="" class="birthday-avatar">
+                                    <div class="birthday-name"><?php echo htmlspecialchars($aniversariante['nome']); ?></div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="birthday-item">
+                                <div class="birthday-name">Nenhum aniversário próximo encontrado.</div>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -302,20 +415,18 @@ body.dark .birthday-name {
                         <h2>Próximos Feriados</h2>
                     </div>
 
-                    <div class="holiday-item">
-                        <div class="holiday-date">04/02</div>
-                        <div class="holiday1">Dia do Início da Luta Armada de Libertação Nacional</div>
-                    </div>
-
-                    <div class="holiday-item">
-                        <div class="holiday-date">04/03</div>
-                        <div class="holiday1">Carnaval</div>
-                    </div>
-
-                    <div class="holiday-item">
-                        <div class="holiday-date">17/10</div>
-                        <div class="holiday1">Fundador da Nação e Dia dos Heróis Nacionais</div>
-                    </div>
+                    <?php if (!empty($proximos_feriados)): ?>
+                        <?php foreach ($proximos_feriados as $feriado): ?>
+                            <div class="holiday-item">
+                                <div class="holiday-date"><?php echo $feriado['data_feriado_formatada']; ?></div>
+                                <div class="holiday1"><?php echo htmlspecialchars($feriado['nome_feriado']); ?></div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="holiday-item">
+                            <div class="holiday1">Nenhum feriado próximo encontrado.</div>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="card" style="margin-top: 20px; min-height: 22.8%;">
@@ -326,18 +437,18 @@ body.dark .birthday-name {
                 <div class="card calendar">
                     <div class="calendar-header">
                         <span id="prevMonth">&lt;</span>
-                        <span id="currentMonth">Fevereiro 2025</span>
+                        <span id="currentMonth"></span>
                         <span id="nextMonth">&gt;</span>
                     </div>
 
                     <div class="calendar-grid calendar-weekdays">
+                        <div>D</div>
                         <div>S</div>
                         <div>T</div>
                         <div>Q</div>
                         <div>Q</div>
                         <div>S</div>
                         <div>S</div>
-                        <div>D</div>
                     </div>
 
                     <div class="calendar-grid" id="calendar-days">
@@ -362,7 +473,7 @@ body.dark .birthday-name {
                                 </div>
                                 <div class="employee-info">
                                     <div class="employee-name"><?php echo htmlspecialchars($funcionario['nome']); ?></div>
-                                    <div class="employee-sector"><?php echo htmlspecialchars($funcionario['departamento']); ?></div>
+                                    <div class="employee-sector"><?php echo htmlspecialchars($funcionario['departamento_nome']); ?></div>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -391,5 +502,580 @@ body.dark .birthday-name {
     </script>
     <script src="./js/UI.js"></script>
     <script src="./js/theme.js"></script>
+    <script>
+        // Array com os feriados do ano atual
+        const feriados = <?php echo json_encode($feriados_calendario); ?>;
+        
+        // Função para verificar se uma data é feriado
+        function isFeriado(date) {
+            const dateStr = date.toISOString().split('T')[0];
+            return feriados.some(feriado => feriado.data_feriado === dateStr);
+        }
+
+        // Função para formatar o nome do mês em português
+        function getNomeMes(mes) {
+            const meses = [
+                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+            ];
+            return meses[mes];
+        }
+
+        // Função para atualizar o calendário
+        function updateCalendar(year, month) {
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startingDay = firstDay.getDay();
+
+            // Atualizar o título do mês
+            document.getElementById('currentMonth').textContent = 
+                `${getNomeMes(month)} ${year}`;
+
+            const calendarDays = document.getElementById('calendar-days');
+            calendarDays.innerHTML = '';
+
+            // Adicionar dias vazios no início
+            for (let i = 0; i < startingDay; i++) {
+                const emptyDay = document.createElement('div');
+                calendarDays.appendChild(emptyDay);
+            }
+
+            // Adicionar os dias do mês
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayElement = document.createElement('div');
+                dayElement.textContent = day;
+                
+                const currentDate = new Date(year, month, day);
+                if (isFeriado(currentDate)) {
+                    dayElement.classList.add('feriado');
+                }
+                
+                calendarDays.appendChild(dayElement);
+            }
+        }
+
+        // Inicializar o calendário com o mês atual
+        const currentDate = new Date();
+        updateCalendar(currentDate.getFullYear(), currentDate.getMonth());
+
+        // Adicionar eventos para os botões de navegação
+        document.getElementById('prevMonth').addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            updateCalendar(currentDate.getFullYear(), currentDate.getMonth());
+        });
+
+        document.getElementById('nextMonth').addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            updateCalendar(currentDate.getFullYear(), currentDate.getMonth());
+        });
+    </script>
 </body>
 </html>
+
+<style>
+    * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    background-color: #f5f5f5;
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 80px;
+    background: white;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.logo {
+    width: 60px;
+    height: 60px;
+    background: url('sam2-05.png') no-repeat center center;
+    background-size: contain;
+    border-radius: 8px;
+}
+
+.main-content {
+    flex: 1;
+    padding: 10px 35px;
+    max-width: 1250px;
+    margin: 0 auto;
+}
+
+.header {
+    display: flex;
+    justify-content: end;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 10px;
+    width: 100%;
+    margin-left: 1%;
+    
+}
+
+.header-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px; 
+    height: 50px;
+    background: white;
+    padding: 8px 15px; 
+    border-radius: 25px;
+    width: 32%;
+}
+
+.time {
+    background-color: white;
+    color: rgb(0, 0, 0);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px; 
+    font-weight: bold;
+    font-size: 15px;
+}
+
+.btn {
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.btn-enter {
+    background-color: hwb(158 24% 29%);
+    margin-left: 0;
+    margin-right: auto;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 40px;
+
+}
+
+.card {
+    background: white;
+    border-radius: 25px;
+    padding: 25px;
+    box-shadow: 0 2px 4px rgba(50, 206, 146, 0.1);
+}
+
+.welcome-card {
+    position: relative;
+    height: 150px; 
+    background-color: #3EB489;
+    padding: 25px;
+    border-radius: 20px;
+    overflow: hidden;
+    background-size: 50% auto;
+    background-position: center; 
+    
+}
+
+.welcome-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: url('sam2-04.png') no-repeat center;
+    background-size: cover;
+    opacity: 0.7; 
+    z-index: 0;
+}
+.welcome-title {
+    color: #f5f5f5;
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+.welcome-text {
+    color: #f5f5f5;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.card.status-section {
+    height: 74.5%; 
+    overflow: hidden; 
+}
+
+
+.status-section {
+    margin-top: 20px;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.section-header h2{
+    font-size: 20px;
+}
+
+.who-is-icon {
+    margin-left: -10px;
+    width: 55px;
+    height: 55px;
+    margin-right: 1px;
+}
+
+.status-title {
+    font-size: 21px;
+}
+
+.status-group {
+    margin-bottom: 20px;
+}
+
+.status-label {
+    color: #666;
+    margin-bottom: 5px;
+    font-size: 12px;
+}
+
+.avatar-group {
+    display: flex;
+    margin-left: 10px;
+}
+
+.avatar {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: -10px;
+    border: 2px solid white;
+    font-size: 16px;
+}
+
+.avatar:nth-child(odd) {
+    background-color: #3EB489;
+    color: white;
+}
+
+.avatar:nth-child(even) {
+    background-color: white;
+    color: #3EB489;
+    border: 2px solid #3EB489;
+}
+
+.birthdays-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: -10px;
+}
+
+.birthday-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.birthday-date {
+    margin-bottom: 10px;
+    color: #666;
+    font-weight: bold;
+}
+
+.birthday-avatar {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+    font-weight: bold;
+    background-color: #3EB489;
+}
+
+.birthday-avatar:nth-child(odd) {
+    background-color: #3EB489;
+    color: white;
+}
+
+.birthday-avatar:nth-child(even) {
+    background-color: #3EB489;
+    color: #3EB489;
+    border: 2px solid #3EB489;
+}
+
+.birthday-name {
+    font-size: 12px;
+    color: #666;
+}
+
+.section-icon {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
+}
+
+.holiday-item {
+    display: flex;
+    margin-bottom: 8px;
+}
+
+.holiday-date {
+    color: #FF6B6B;
+    font-weight: bold;
+    margin-right: 15px;
+    min-width: 45px;
+}
+
+.holiday1{
+    font-size: 12.5px;
+    color: #666;
+    font: bold;
+}
+
+.calendar {
+    padding: 20px;
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+    color: #3EB489;
+    font-weight: bold;
+}
+
+.calendar-header span {
+    cursor: pointer;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.calendar-weekdays {
+    font-size: 14px;
+    color: #666;
+}
+
+.calendar-day {
+    padding: 8px;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.calendar-day.active {
+    background: #3EB489;
+    color: white;
+}
+
+.calendar-day.weekend {
+    background: #2a9c6f;
+    color: white;
+}
+
+.calendar-day.empty {
+    background: transparent;
+}
+
+.new-employees {
+    margin-top: 20px;
+    height: 360px;
+    overflow-y: auto;
+}
+
+.new-employees::-webkit-scrollbar {
+    width: 6px;
+}
+
+
+.new-employees::-webkit-scrollbar-thumb {
+    background-color: #aaa;
+    border-radius: 10px;  
+}
+
+.new-employees::-webkit-scrollbar-track {
+    background-color: #f0f0f0;
+    border-radius: 10px;  
+}
+
+.new-employees-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    font-size: 13.5px;
+
+}
+
+.new-employees-header1{
+    color: #666;
+    font: bold;
+    
+}
+
+.add-button1 {
+    text-decoration: none;
+    color: #3EB489;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    font-size: 13.5px;
+    
+
+}
+
+.employee-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.employee-avatar {
+    width: 35px;
+    height: 35px;
+    background: #3EB489;
+    border-radius: 50%;
+    margin-right: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 16px;
+    overflow: hidden;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.employee-avatar img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.employee-info {
+    flex: 1;
+}
+
+.employee-name {
+    font-weight: bold;
+}
+
+.employee-sector {
+    color: #666;
+    font-size: 11px;
+}
+
+@media (max-width: 1200px) {
+    .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .main-content {
+        padding: 10px 20px;
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr; /* Uma coluna em telas menores */
+    }
+
+    .sidebar {
+        width: 60px; /* Reduzir a largura da sidebar */
+    }
+
+    .header-buttons {
+        width: 100%; /* Ajustar a largura dos botões no cabeçalho */
+    }
+
+    .btn {
+        padding: 6px 12px; /* Ajustar o padding dos botões */
+    }
+
+    .welcome-card {
+        height: 120px; /* Ajustar a altura do cartão de boas-vindas */
+    }
+
+    .calendar-header {
+        flex-direction: column; /* Colocar os elementos em coluna */
+        align-items: flex-start; /* Alinhar à esquerda */
+    }
+
+    .calendar-header span {
+        margin-bottom: 5px; /* Espaçamento entre os elementos */
+    }
+}
+
+@media (max-width: 480px) {
+    .sidebar {
+        display: none; /* Ocultar a sidebar em telas muito pequenas */
+    }
+
+    .main-content {
+        padding: 10px; /* Reduzir o padding do conteúdo principal */
+    }
+
+    .header {
+        flex-direction: column; /* Colocar os elementos em coluna */
+        align-items: flex-start; /* Alinhar à esquerda */
+    }
+
+    .header-buttons {
+        width: 100%; /* Ajustar a largura dos botões no cabeçalho */
+        justify-content: space-between; /* Espaçar os botões */
+    }
+
+    .welcome-card {
+        height: 100px; /* Ajustar a altura do cartão de boas-vindas */
+    }
+
+    .employee-item {
+        flex-direction: column; /* Colocar os elementos em coluna */
+        align-items: flex-start; /* Alinhar à esquerda */
+    }
+
+    .employee-avatar {
+        margin-bottom: 5px; /* Espaçamento entre a imagem e o texto */
+    }
+}
+</style>

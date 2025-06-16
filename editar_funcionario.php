@@ -2,17 +2,43 @@
 include 'protect.php';
 include 'config.php';
 
+// Obter o id_empresa do administrador
+$admin_id = $_SESSION['id_adm'];
+$sql_admin = "SELECT e.id_empresa FROM empresa e WHERE e.adm_id = ?";
+$stmt_admin = $conn->prepare($sql_admin);
+$stmt_admin->bind_param("i", $admin_id);
+$stmt_admin->execute();
+$result_admin = $stmt_admin->get_result();
+$admin = $result_admin->fetch_assoc();
+$empresa_id = $admin['id_empresa'];
+
+// Adicionar consultas para buscar cargos, departamentos e bancos
+$sql_cargos = "SELECT id, nome, departamento_id, salario_base FROM cargos ORDER BY nome";
+$result_cargos = $conn->query($sql_cargos);
+
+$sql_departamentos = "SELECT id, nome FROM departamentos ORDER BY nome";
+$result_departamentos = $conn->query($sql_departamentos);
+
+$sql_bancos = "SELECT banco_codigo, banco_nome FROM bancos_ativos WHERE empresa_id = ? AND ativo = 1 ORDER BY banco_nome";
+$stmt_bancos = $conn->prepare($sql_bancos);
+$stmt_bancos->bind_param("i", $empresa_id);
+$stmt_bancos->execute();
+$result_bancos = $stmt_bancos->get_result();
+
 // Pegar o ID do funcionário da URL
 $id_fun = $_GET['id'];
 
 // Consulta SQL para buscar os dados atuais do funcionário
-$sql = "SELECT num_mecanografico, nome, foto, bi, emissao_bi, validade_bi, 
-               data_nascimento, pais, morada, genero, num_agregados, 
-               contato_emergencia, nome_contato_emergencia, telemovel, email, estado, 
-               cargo, departamento, tipo_trabalhador, 
-               num_conta_bancaria, banco, iban, 
-               salario_base, num_ss, data_admissao 
-        FROM funcionario WHERE id_fun = ?";
+$sql = "SELECT f.num_mecanografico, f.nome, f.foto, f.bi, f.emissao_bi, f.validade_bi, 
+               f.data_nascimento, f.pais, f.morada, f.genero, f.num_agregados, 
+               f.contato_emergencia, f.nome_contato_emergencia, f.telemovel, f.email, f.estado, 
+               f.cargo, f.departamento, f.tipo_trabalhador, 
+               f.num_conta_bancaria, f.banco, f.iban, 
+               f.salario_base, f.num_ss, f.data_admissao,
+               b.banco_nome
+        FROM funcionario f
+        LEFT JOIN bancos_ativos b ON f.banco = b.banco_codigo
+        WHERE f.id_fun = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $id_fun);
 $stmt->execute();
@@ -42,7 +68,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $nome_contato_emergencia = $_POST['nome_contato_emergencia'];
     $telemovel = $_POST['telemovel'];
     $email = $_POST['email'];
-    $estado = $_POST['estado'];
+    $estado = trim($_POST['estado']); // Remover espaços em branco
+    error_log("Estado recebido do formulário: '" . $estado . "'");
+    
+    // Garantir que o estado seja sempre 'Ativo' ou 'Inativo'
+    if (empty($estado) || ($estado !== 'Ativo' && $estado !== 'Inativo')) {
+        $estado = 'Ativo'; // Valor padrão se não for nenhum dos dois
+        error_log("Estado ajustado para: " . $estado);
+    }
     $cargo = $_POST['cargo'];
     $departamento = $_POST['departamento'];
     $tipo_trabalhador = $_POST['tipo_trabalhador'];
@@ -52,6 +85,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $salario_base = $_POST['salario_base'];
     $num_ss = $_POST['num_ss'];
     $data_admissao = $_POST['data_admissao'];
+
+    // Debug para verificar os valores
+    error_log("Valor do banco selecionado: " . $banco);
 
     // Atualizar os dados no banco de dados
     $sql_update = "UPDATE funcionario SET 
@@ -310,51 +346,66 @@ body {
 }
 
 .section-title {
-    padding: 10px;
     font-size: 20px;
-    margin-bottom: 25px;
-    gap: 10px;
     font-weight: bold;
-    text-align: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+    color: inherit;
+}
+
+.professional-info .section-title,
+.secao.o .section-title {
+    border-bottom-color: #eee;
+    color: #333;
 }
 
 .form-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
 }
 
-.form-group {
-    margin-bottom: 10px;
+.form-group,
+.secao p {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 15px;
 }
 
-.form-group label {
+.form-group label,
+.secao p strong {
     display: block;
-    margin-bottom: 4px;
+    margin-bottom: 5px;
     font-size: 13px;
     color: inherit;
+    font-weight: 600;
 }
 
-.form-group input,
-.form-group select {
+.form-group input:not([type="submit"]),
+.form-group select,
+.secao input:not([name="num_mecanografico"], [type="submit"]),
+.secao select {
     width: 100%;
-    padding: 9px 12px;
-    border-radius: 5px;
-    font-size: 12px;
-}
-
-.personal-info .form-group input,
-.personal-info .form-group select {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: #333;
-}
-
-.professional-info .form-group input,
-.professional-info .form-group select {
+    padding: 8px 12px;
     border: 1px solid #ddd;
-    background: white;
+    border-radius: 5px;
+    font-size: 13px;
     color: #333;
+    background-color: white;
+    box-sizing: border-box;
+}
+
+.secao input[name="num_mecanografico"] {
+    background-color: #f0f0f0;
+    color: #555;
+    cursor: not-allowed;
+    border: 1px solid #ccc;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-size: 13px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .btn-confirm {
@@ -390,26 +441,24 @@ body {
 }
 
 .container {
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    margin-left: 9px;
-    padding: 0 15px 30px;
+    margin: 20px 0;
+    padding: 0 15px;
     position: relative;
-    margin-right: -22px;
-    height: 10px;
+    height: auto;
 }
 
 .foto-perfil {
     position: absolute;
     top: 50px;
-    right: 100px;
-    width: 150px;
-    height: 150px;
+    right: 50px;
+    width: 120px;
+    height: 120px;
     border-radius: 50%;
     overflow: hidden;
     border: 3px solid white;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
     background: linear-gradient(to right, #5cbea5, #77d6c1);
+    z-index: 10;
 }
 
 .foto-perfil img {
@@ -421,82 +470,61 @@ body {
 .secao {
     background-color: white;
     border-radius: 12px;
-    padding: 15px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-    width: 80%;
-    margin-bottom: -10px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    margin-bottom: 20px;
     height: auto;
-    max-height: 260px;
+    max-height: none;
+    overflow: visible;
+    color: #333;
 }
 
 .teste {
-    display: flex;
-    justify-content: center; /* Mudado de space-evenly para space-between */
-    width: 60%;
-    margin-left: 18%;
-    gap: 27%; /* Adicionando gap para controlar o espaçamento entre as divs */
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
 }
 
 .teste div {
-    margin-right: 0; /* Removendo margens negativas */
-    margin-left: 0; /* Removendo margens negativas */
+    margin: 0;
     padding: 0;
-    margin-top: -10px;
-}
-
-.teste div:first-child {
-    margin-left: 0;
-}
-
-.teste div:nth-child(2) {
-    margin-left: 0;
-    margin-right: 0;
-}
-
-.teste div:last-child {
-    margin-right: 0;
 }
 
 .teste div p {
-    margin: 5px 0;
-    font-size: 13px;
+    margin: 0;
+    font-size: 14px;
 }
 
 .secao input,
 .secao select {
-    border: 1px solid #ddd;
-    padding: 4px 6px;
-    border-radius: 5px;
-    font-size: 12px;
-    width: 110px;
-    margin-left: 5px;
 }
 
 .juntos {
     display: flex;
+    gap: 20px;
+    margin-top: 0px;
     width: 100%;
-    justify-content: space-between;
-    height: auto;
-    max-height: none;
-    height: -60%; /* Removed max-height restriction */
-    overflow: visible; /* Allow content to be visible */    
-
 }
 
 .m {
     width: 100%;
     margin-bottom: 20px;
     background: linear-gradient(to right, rgb(255, 255, 255) 80%, #82dab7);
-    padding: 15px ; /* Increase padding, especially at bottom */
+    padding: 20px;
     height: auto;
-    margin-top: 10px; /* Add some space at the top */
+    margin-top: 10px;
+    color: #333;
 }
 
-.n{
-    width: 49%;
+.n {
+    width: 50%;
+    box-sizing: border-box;
 }
+
 .o {
-    width: 49%;
+    width: 50%;
+    box-sizing: border-box;
 }
 
 .secao h2 {
@@ -505,12 +533,13 @@ body {
     margin-bottom: 15px;
     font-weight: 600;
     border-bottom: 1px solid #eee;
-    padding-bottom: 15px;
+    padding-bottom: 10px;
 }
 
 .secao p {
     margin: 8px 0;
     font-size: 14px;
+    color: #333;
 }
 
 .secao strong {
@@ -520,12 +549,12 @@ body {
 
 .doc-icons {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
     gap: 20px;
     margin-top: 30px;
     border: 1px dashed #ccc;
     border-radius: 12px;
-    padding: 30px;
+    padding: 20px;
 }
 
 .doc-icon {
@@ -536,8 +565,8 @@ body {
 }
 
 .icon-circle {
-    width: 80px;
-    height: 80px;
+    width: 60px;
+    height: 60px;
     background-color: rgba(92, 190, 165, 0.2);
     border-radius: 50%;
     display: flex;
@@ -548,43 +577,109 @@ body {
 
 .icon-circle i {
     color: #5cbea5;
-    font-size: 30px;
+    font-size: 24px;
 }
 
 .doc-icon p {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     color: #555;
     margin-bottom: 5px;
 }
 
 .doc-icon small {
-    font-size: 12px;
+    font-size: 11px;
     color: #999;
 }
 
 .edit-button {
-    margin-top: 50px;;
-    justify-self: right;
-    background-color: #5cbea5;
+    display: block;
+    margin: 20px 0 20px auto;
+    background-color: #3EB489;
     color: white;
     border: none;
-    padding: 8px 20px;
+    padding: 10px 25px;
     border-radius: 20px;
+    cursor: pointer;
+    font-weight: 500;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
     display: flex;
     align-items: center;
     gap: 10px;
-    cursor: pointer;
-    font-weight: 500;
-    box-shadow: 0 3px 10px rgba(92, 190, 165, 0.3);
-}
-
-.edit-button i {
-    font-size: 14px;
 }
 
 .edit-button1 {
     text-decoration: none;
+}
+
+/* Estilo para inputs e selects dentro da seção de Informações Pessoais */
+.secao.m input:not([type="submit"]),
+.secao.m select {
+    max-width: 350px; /* Define uma largura máxima para os campos */
+    width: 100%; /* Mantém a largura base de 100% dentro do container flex/grid */
+    box-sizing: border-box; /* Garante que o padding e borda sejam incluídos na largura */
+}
+
+/* Estilo específico para o input num_mecanografico (readonly) */
+.secao input[name="num_mecanografico"] {
+    background-color: #f0f0f0;
+    color: #555;
+    cursor: not-allowed;
+    border: 1px solid #ccc;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-size: 13px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Estilo para o container do select */
+.readonly-container {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+/* Estilo para o select */
+.readonly-container select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 13px;
+    color: #333;
+    background-color: white;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 30px; /* Espaço para o ícone */
+}
+
+/* Estilo para o ícone de cadeado */
+.lock-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #666;
+    pointer-events: none;
+    font-size: 14px;
+}
+
+/* Estilo para o select quando desabilitado */
+.readonly-container select:disabled {
+    background-color: #f0f0f0;
+    cursor: not-allowed;
+    color: #555;
+}
+
+/* Estilo para a seta do select quando habilitado */
+.readonly-container select:not(:disabled) {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px;
 }
     </style>
 </head>
@@ -637,7 +732,7 @@ body {
                 <div class="secao m">
                     <h2>Informações Pessoais</h2>
                     <div class="teste">
-                        <div style="margin-left:-200px;">
+                        <div style="margin-left:0px;">
                             <p><strong>Nome:</strong> <input type="text" name="nome" value="<?php echo $dados['nome']; ?>"></p>
                             <p><strong>Nº BI:</strong> <input type="text" name="bi" value="<?php echo $dados['bi']; ?>"></p>
                             <p><strong>Emissão:</strong> <input type="date" name="emissao_bi" value="<?php echo $dados['emissao_bi']; ?>"></p>
@@ -666,70 +761,57 @@ body {
                     <div class="secao n">
                         <h2>Informações Profissionais</h2>
                         <p><strong>Nº Mecanográfico:</strong> <input type="text" name="num_mecanografico" value="<?php echo $dados['num_mecanografico']; ?>"readonly></p>
-                        </span>
-                        <p><strong>Cargo:</strong>
-                            <select name="cargo" id="cargo" required>
-                                <option value="">Selecione um cargo</option>
-                                <option value="Administrador" <?php echo ($dados['cargo'] == 'Administrador') ? 'selected' : ''; ?>>Administrador</option>
-                                <option value="Analista Financeiro" <?php echo ($dados['cargo'] == 'Analista Financeiro') ? 'selected' : ''; ?>>Analista Financeiro</option>
-                                <option value="Assistente Administrativo" <?php echo ($dados['cargo'] == 'Assistente Administrativo') ? 'selected' : ''; ?>>Assistente Administrativo</option>
-                                <option value="Assistente de Recursos Humanos" <?php echo ($dados['cargo'] == 'Assistente de Recursos Humanos') ? 'selected' : ''; ?>>Assistente de Recursos Humanos</option>
-                                <option value="Atendente Comercial" <?php echo ($dados['cargo'] == 'Atendente Comercial') ? 'selected' : ''; ?>>Atendente Comercial</option>
-                                <option value="Auditor" <?php echo ($dados['cargo'] == 'Auditor') ? 'selected' : ''; ?>>Auditor</option>
-                                <option value="Contabilista" <?php echo ($dados['cargo'] == 'Contabilista') ? 'selected' : ''; ?>>Contabilista</option>
-                                <option value="Coordenador de Projetos" <?php echo ($dados['cargo'] == 'Coordenador de Projetos') ? 'selected' : ''; ?>>Coordenador de Projetos</option>
-                                <option value="Diretor Comercial" <?php echo ($dados['cargo'] == 'Diretor Comercial') ? 'selected' : ''; ?>>Diretor Comercial</option>
-                                <option value="Diretor de Recursos Humanos" <?php echo ($dados['cargo'] == 'Diretor de Recursos Humanos') ? 'selected' : ''; ?>>Diretor de Recursos Humanos</option>
-                                <option value="Engenheiro Civil" <?php echo ($dados['cargo'] == 'Engenheiro Civil') ? 'selected' : ''; ?>>Engenheiro Civil</option>
-                                <option value="Engenheiro Informático" <?php echo ($dados['cargo'] == 'Engenheiro Informático') ? 'selected' : ''; ?>>Engenheiro Informático</option>
-                                <option value="Especialista em Marketing" <?php echo ($dados['cargo'] == 'Especialista em Marketing') ? 'selected' : ''; ?>>Especialista em Marketing</option>
-                                <option value="Gerente de Contas" <?php echo ($dados['cargo'] == 'Gerente de Contas') ? 'selected' : ''; ?>>Gerente de Contas</option>
-                                <option value="Gestor de Projetos" <?php echo ($dados['cargo'] == 'Gestor de Projetos') ? 'selected' : ''; ?>>Gestor de Projetos</option>
-                                <option value="Jurista" <?php echo ($dados['cargo'] == 'Jurista') ? 'selected' : ''; ?>>Jurista</option>
-                                <option value="Operador de Caixa" <?php echo ($dados['cargo'] == 'Operador de Caixa') ? 'selected' : ''; ?>>Operador de Caixa</option>
-                                <option value="Operador de Máquinas" <?php echo ($dados['cargo'] == 'Operador de Máquinas') ? 'selected' : ''; ?>>Operador de Máquinas</option>
-                                <option value="Programador" <?php echo ($dados['cargo'] == 'Programador') ? 'selected' : ''; ?>>Programador</option>
-                                <option value="Rececionista" <?php echo ($dados['cargo'] == 'Rececionista') ? 'selected' : ''; ?>>Rececionista</option>
-                                <option value="Secretário Executivo" <?php echo ($dados['cargo'] == 'Secretário Executivo') ? 'selected' : ''; ?>>Secretário Executivo</option>
-                                <option value="Supervisor de Vendas" <?php echo ($dados['cargo'] == 'Supervisor de Vendas') ? 'selected' : ''; ?>>Supervisor de Vendas</option>
-                                <option value="Técnico de Manutenção" <?php echo ($dados['cargo'] == 'Técnico de Manutenção') ? 'selected' : ''; ?>>Técnico de Manutenção</option>
-                                <option value="Técnico de Suporte" <?php echo ($dados['cargo'] == 'Técnico de Suporte') ? 'selected' : ''; ?>>Técnico de Suporte</option>
-                                <option value="Vendedor" <?php echo ($dados['cargo'] == 'Vendedor') ? 'selected' : ''; ?>>Vendedor</option>
-                            </select>
-                        </p>
-
                         <p><strong>Departamento:</strong>
                             <select name="departamento" id="departamento" required>
                                 <option value="">Selecione um departamento</option>
-                                <option value="administrativo" <?php echo ($dados['departamento'] == 'administrativo') ? 'selected' : ''; ?>>Administrativo</option>
-                                <option value="financeiro" <?php echo ($dados['departamento'] == 'financeiro') ? 'selected' : ''; ?>>Financeiro</option>
-                                <option value="rh" <?php echo ($dados['departamento'] == 'rh') ? 'selected' : ''; ?>>Recursos Humanos</option>
-                                <option value="tecnologia" <?php echo ($dados['departamento'] == 'tecnologia') ? 'selected' : ''; ?>>Tecnologia da Informação</option>
-                                <option value="marketing" <?php echo ($dados['departamento'] == 'marketing') ? 'selected' : ''; ?>>Marketing</option>
-                                <option value="vendas" <?php echo ($dados['departamento'] == 'vendas') ? 'selected' : ''; ?>>Vendas</option>
-                                <option value="juridico" <?php echo ($dados['departamento'] == 'juridico') ? 'selected' : ''; ?>>Jurídico</option>
-                                <option value="logistica" <?php echo ($dados['departamento'] == 'logistica') ? 'selected' : ''; ?>>Logística</option>
-                                <option value="operacional" <?php echo ($dados['departamento'] == 'operacional') ? 'selected' : ''; ?>>Operacional</option>
+                                <?php
+                                if ($result_departamentos->num_rows > 0) {
+                                    while($row = $result_departamentos->fetch_assoc()) {
+                                        $selected = ($dados['departamento'] == $row['id']) ? 'selected' : '';
+                                        echo "<option value='" . $row['id'] . "' " . $selected . ">" . $row['nome'] . "</option>";
+                                    }
+                                }
+                                ?>
                             </select>
+                        </p>
+
+                        <p><strong>Cargo:</strong>
+                            <div class="readonly-container" title="Selecione o Departamento primeiro para prosseguir">
+                                <select name="cargo" id="cargo" required disabled>
+                                    <option value="">Selecione um cargo</option>
+                                    <?php
+                                    if ($result_cargos->num_rows > 0) {
+                                        while($row = $result_cargos->fetch_assoc()) {
+                                            $selected = ($dados['cargo'] == $row['id']) ? 'selected' : '';
+                                            echo "<option value='" . $row['id'] . "' " . $selected . " 
+                                                data-departamento='" . $row['departamento_id'] . "'
+                                                data-salario='" . $row['salario_base'] . "'>" . 
+                                                $row['nome'] . "</option>";
+                                        }
+                                    }
+                                    ?>
+                                </select>
+                                <i class="fas fa-lock lock-icon"></i>
+                            </div>
                         </p>
                         <p><strong>Tipo:</strong>
                             <select name="tipo_trabalhador" id="tipo_trabalhador" required>
                                 <option value="">Selecione um tipo de trabalhador</option>
-                                <option value="efetivo" <?php echo ($dados['tipo_trabalhador'] == 'efetivo') ? 'selected' : ''; ?>>Trabalhador Efetivo</option>
-                                <option value="temporario" <?php echo ($dados['tipo_trabalhador'] == 'temporario') ? 'selected' : ''; ?>>Trabalhador Temporário</option>
-                                <option value="estagiario" <?php echo ($dados['tipo_trabalhador'] == 'estagiario') ? 'selected' : ''; ?>>Trabalhador Estagiário</option>
-                                <option value="autonomo" <?php echo ($dados['tipo_trabalhador'] == 'autonomo') ? 'selected' : ''; ?>>Trabalhador Autônomo</option>
-                                <option value="freelancer" <?php echo ($dados['tipo_trabalhador'] == 'freelancer') ? 'selected' : ''; ?>>Trabalhador Freelancer</option>
-                                <option value="terceirizado" <?php echo ($dados['tipo_trabalhador'] == 'terceirizado') ? 'selected' : ''; ?>>Trabalhador Terceirizado</option>
-                                <option value="intermitente" <?php echo ($dados['tipo_trabalhador'] == 'intermitente') ? 'selected' : ''; ?>>Trabalhador Intermitente</option>
-                                <option value="voluntario" <?php echo ($dados['tipo_trabalhador'] == 'voluntario') ? 'selected' : ''; ?>>Trabalhador Voluntário</option>
+                                <option value="Efetivo" <?php echo ($dados['tipo_trabalhador'] == 'Efetivo') ? 'selected' : ''; ?>>Trabalhador Efetivo</option>
+                                <option value="Temporário" <?php echo ($dados['tipo_trabalhador'] == 'Temporário') ? 'selected' : ''; ?>>Trabalhador Temporário</option>
+                                <option value="Estagiário" <?php echo ($dados['tipo_trabalhador'] == 'Estagiário') ? 'selected' : ''; ?>>Trabalhador Estagiário</option>
+                                <option value="Autônomo" <?php echo ($dados['tipo_trabalhador'] == 'Autônomo') ? 'selected' : ''; ?>>Trabalhador Autônomo</option>
+                                <option value="Freelancer" <?php echo ($dados['tipo_trabalhador'] == 'Freelancer') ? 'selected' : ''; ?>>Trabalhador Freelancer</option>
+                                <option value="Terceirizado" <?php echo ($dados['tipo_trabalhador'] == 'Terceirizado') ? 'selected' : ''; ?>>Trabalhador Terceirizado</option>
+                                <option value="Intermitente" <?php echo ($dados['tipo_trabalhador'] == 'Intermitente') ? 'selected' : ''; ?>>Trabalhador Intermitente</option>
+                                <option value="Voluntário" <?php echo ($dados['tipo_trabalhador'] == 'Voluntário') ? 'selected' : ''; ?>>Trabalhador Voluntário</option>
                             </select>
                         </p>
                         <p><strong>Estado:</strong> 
-                        <select name="estado">
-                            <option value="Ativo" <?php echo ($dados['estado'] == 'Ativo') ? 'selected' : ''; ?>>Ativo</option>
+                        <select name="estado" required onchange="console.log('Estado selecionado:', this.value)">
+                            <option value="">Selecione um estado</option>
+                            <option value="Ativo" <?php echo ($dados['estado'] == 'Ativo' || empty($dados['estado'])) ? 'selected' : ''; ?>>Ativo</option>
                             <option value="Inativo" <?php echo ($dados['estado'] == 'Inativo') ? 'selected' : ''; ?>>Inativo</option>
-                            <option value="Terminado" <?php echo ($dados['estado'] == 'Terminado') ? 'selected' : ''; ?>>Terminado</option>
                         </select>
                     </p>
                         <p><strong>Data de Admissão:</strong> <input type="date" name="data_admissao" value="<?php echo $dados['data_admissao']; ?>"></p>
@@ -742,8 +824,14 @@ body {
                         <p><strong>Banco:</strong>
                             <select name="banco" id="banco" required>
                                 <option value="">Selecione um banco</option>
-                                <option value="BAI" <?php echo ($dados['banco'] == 'BAI') ? 'selected' : ''; ?>>BAI</option>
-                                <option value="BIC" <?php echo ($dados['banco'] == 'BIC') ? 'selected' : ''; ?>>BIC</option>
+                                <?php
+                                if ($result_bancos->num_rows > 0) {
+                                    while($row = $result_bancos->fetch_assoc()) {
+                                        $selected = ($dados['banco'] == $row['banco_codigo']) ? 'selected' : '';
+                                        echo "<option value='" . $row['banco_codigo'] . "' " . $selected . ">" . $row['banco_nome'] . "</option>";
+                                    }
+                                }
+                                ?>
                             </select>
                         </p>
                         <p><strong>IBAN:</strong> <input type="text" name="iban" value="<?php echo $dados['iban']; ?>"></p>
@@ -886,6 +974,82 @@ body {
         // Se todas as validações passarem
         return true; // Permite o envio do formulário
     }
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const departamentoSelect = document.getElementById('departamento');
+        const cargoSelect = document.getElementById('cargo');
+        const salarioBaseInput = document.querySelector('input[name="salario_base"]');
+        const lockIcon = document.querySelector('.readonly-container .lock-icon');
+
+        // Armazenar todos os cargos para filtragem posterior
+        const todosCargos = Array.from(cargoSelect.options).map(option => ({
+            id: option.value,
+            nome: option.text,
+            departamento_id: option.getAttribute('data-departamento'),
+            salario_base: option.getAttribute('data-salario')
+        }));
+
+        // Função para atualizar os cargos baseado no departamento
+        function atualizarCargos(departamentoId) {
+            // Guardar o cargo selecionado
+            const cargoSelecionado = cargoSelect.value;
+            
+            // Limpar o select de cargos
+            cargoSelect.innerHTML = '<option value="">Selecione um cargo</option>';
+            
+            if (departamentoId) {
+                // Filtrar cargos pelo departamento selecionado
+                const cargosFiltrados = todosCargos.filter(cargo => 
+                    cargo.departamento_id === departamentoId
+                );
+
+                // Adicionar cargos filtrados ao select
+                cargosFiltrados.forEach(cargo => {
+                    const option = document.createElement('option');
+                    option.value = cargo.id;
+                    option.textContent = cargo.nome;
+                    option.setAttribute('data-salario', cargo.salario_base);
+                    // Se este for o cargo que estava selecionado, marcar como selected
+                    if (cargo.id === cargoSelecionado) {
+                        option.selected = true;
+                    }
+                    cargoSelect.appendChild(option);
+                });
+
+                // Habilitar o select de cargos e esconder o ícone de cadeado
+                cargoSelect.disabled = false;
+                lockIcon.style.display = 'none';
+            } else {
+                // Desabilitar o select de cargos e mostrar o ícone de cadeado
+                cargoSelect.disabled = true;
+                lockIcon.style.display = 'block';
+            }
+        }
+
+        // Atualizar cargos quando o departamento mudar
+        departamentoSelect.addEventListener('change', function() {
+            atualizarCargos(this.value);
+        });
+
+        cargoSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption && selectedOption.getAttribute('data-salario')) {
+                salarioBaseInput.value = selectedOption.getAttribute('data-salario');
+            } else {
+                salarioBaseInput.value = '';
+            }
+        });
+
+        // Verificar estado inicial do departamento e atualizar cargos
+        if (departamentoSelect.value) {
+            atualizarCargos(departamentoSelect.value);
+        } else {
+            cargoSelect.disabled = true;
+            lockIcon.style.display = 'block';
+        }
+    });
 </script>
 </body>
 </html>
