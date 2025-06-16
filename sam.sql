@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 31, 2025 at 07:42 PM
+-- Generation Time: Jun 06, 2025 at 05:55 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -20,6 +20,16 @@ SET time_zone = "+00:00";
 --
 -- Database: `sam`
 --
+
+DELIMITER $$
+--
+-- Functions
+--
+CREATE DEFINER=`root`@`localhost` FUNCTION `formata_data_pt` (`data` DATE) RETURNS VARCHAR(10) CHARSET utf8mb4 COLLATE utf8mb4_general_ci DETERMINISTIC BEGIN
+    RETURN DATE_FORMAT(data, '%d-%m-%Y');
+END$$
+
+DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -97,7 +107,7 @@ CREATE TABLE `adm_sessions` (
 --
 
 INSERT INTO `adm_sessions` (`session_id`, `adm_id`, `user_agent`, `ip_address`, `last_activity`) VALUES
-('4hqrpp8lfbgvb13p9s0h4es7it', 4, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', '::1', '2025-05-30 23:26:10'),
+('itq66bu1tvvgsb7573ptqtb5do', 4, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', '::1', '2025-06-05 14:45:34'),
 ('vv04n3d0n4pe7q54lhj4sc910m', 8, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', '::1', '2025-05-30 23:34:10');
 
 -- --------------------------------------------------------
@@ -151,7 +161,7 @@ INSERT INTO `bancos_ativos` (`id`, `empresa_id`, `banco_nome`, `banco_codigo`, `
 (13, 2, 'Banco Yetu', 'YETU', 0),
 (14, 2, 'Banco VTB África', 'VTB', 1),
 (15, 2, 'Banco Angolano de Investimentos (BAI)', 'BAI', 1),
-(17, 2, 'Banco de Poupança do Kimi', 'BPK', 0);
+(17, 2, 'Banco de Poupança do Kimi', 'BPK', 1);
 
 -- --------------------------------------------------------
 
@@ -190,7 +200,8 @@ INSERT INTO `cargos` (`id`, `nome`, `departamento_id`, `salario_base`, `empresa_
 (2, 'Vendas', 2, 220000.00, 2, '2025-05-30 21:08:09'),
 (3, 'NNC', 3, 300000.00, 2, '2025-05-30 21:38:49'),
 (4, 'Programadores', 1, 50001.00, 2, '2025-05-30 22:07:48'),
-(5, 'Backend', 4, 222000.00, 2, '2025-05-30 22:22:15');
+(6, 'Trabalhador', 3, 90000.00, 2, '2025-06-02 16:35:17'),
+(7, 'Gestor de Produção', 1, 1500000.00, 2, '2025-06-05 13:38:09');
 
 -- --------------------------------------------------------
 
@@ -230,9 +241,8 @@ CREATE TABLE `departamentos` (
 
 INSERT INTO `departamentos` (`id`, `nome`, `empresa_id`, `created_at`) VALUES
 (1, 'TI', 2, '2025-05-30 21:02:27'),
-(2, 'Marketings', 2, '2025-05-30 21:07:41'),
-(3, 'ORG', 2, '2025-05-30 21:12:58'),
-(4, 'TI2', 2, '2025-05-30 22:08:57');
+(2, 'Marketing', 2, '2025-05-30 21:07:41'),
+(3, 'ORG', 2, '2025-05-30 21:12:58');
 
 -- --------------------------------------------------------
 
@@ -254,7 +264,7 @@ CREATE TABLE `dispositivos_confiaveis` (
 --
 
 INSERT INTO `dispositivos_confiaveis` (`id`, `adm_id`, `user_agent`, `ip_address`, `data_criacao`, `ultimo_acesso`) VALUES
-(1, 4, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', '::1', '2025-05-30 15:02:19', '2025-05-31 15:30:44'),
+(1, 4, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', '::1', '2025-05-30 15:02:19', '2025-06-02 12:29:42'),
 (4, 8, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', '::1', '2025-05-30 23:32:40', '2025-05-30 23:32:40');
 
 -- --------------------------------------------------------
@@ -273,6 +283,14 @@ CREATE TABLE `documentos` (
   `num_funcionario` int(11) NOT NULL,
   `folder` varchar(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+--
+-- Dumping data for table `documentos`
+--
+
+INSERT INTO `documentos` (`id_documento`, `titulo`, `tipo`, `data`, `descricao`, `anexo`, `num_funcionario`, `folder`) VALUES
+(1, 'CV - Kimi Carvalho - Jun..pdf', 'pdf', '2025-06-02', 'Documento enviado', '683dd4fb47c787.53469443.pdf', 1, 'documentacao'),
+(2, 'CV - Kimi Carvalho.pdf', 'pdf', '2025-06-02', 'Documento enviado', '683dfe904b82e5.77933045.pdf', 1, 'documentacao');
 
 -- --------------------------------------------------------
 
@@ -341,6 +359,59 @@ CREATE TABLE `falta` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `feriados_angola`
+--
+
+CREATE TABLE `feriados_angola` (
+  `id` int(11) NOT NULL,
+  `data_feriado` date NOT NULL,
+  `nome_feriado` varchar(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `feriados_angola`
+--
+
+INSERT INTO `feriados_angola` (`id`, `data_feriado`, `nome_feriado`) VALUES
+(1, '2024-01-01', 'Dia de Ano Novo'),
+(2, '2024-02-04', 'Dia do Início da Luta Armada de Libertação Nacional'),
+(3, '2024-03-08', 'Dia Internacional da Mulher'),
+(4, '2024-04-04', 'Dia da Paz e Reconciliação Nacional'),
+(5, '2024-05-01', 'Dia Internacional do Trabalhador'),
+(6, '2024-06-01', 'Dia Internacional da Criança'),
+(7, '2024-09-17', 'Dia do Fundador da Nação e dos Heróis Nacionais'),
+(8, '2024-11-02', 'Dia dos Finados'),
+(9, '2024-11-11', 'Dia da Independência Nacional'),
+(10, '2024-12-25', 'Dia de Natal e da Família'),
+(11, '2024-02-13', 'Carnaval'),
+(12, '2024-01-01', 'Dia de Ano Novo'),
+(13, '2024-02-04', 'Dia do Início da Luta Armada de Libertação Nacional'),
+(14, '2024-03-08', 'Dia Internacional da Mulher'),
+(15, '2024-04-04', 'Dia da Paz e Reconciliação Nacional'),
+(16, '2024-05-01', 'Dia Internacional do Trabalhador'),
+(17, '2024-06-01', 'Dia Internacional da Criança'),
+(18, '2024-09-17', 'Dia do Fundador da Nação e dos Heróis Nacionais'),
+(19, '2024-11-02', 'Dia dos Finados'),
+(20, '2024-11-11', 'Dia da Independência Nacional'),
+(21, '2024-12-25', 'Dia de Natal e da Família'),
+(22, '2024-02-13', 'Carnaval');
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `feriados_angola_formatados`
+-- (See below for the actual view)
+--
+CREATE TABLE `feriados_angola_formatados` (
+`id` int(11)
+,`data_feriado` date
+,`data_feriado_pt` varchar(10)
+,`nome_feriado` varchar(100)
+);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `funcionario`
 --
 
@@ -361,27 +432,33 @@ CREATE TABLE `funcionario` (
   `nome_contato_emergencia` varchar(100) NOT NULL,
   `telemovel` varchar(20) NOT NULL,
   `email` varchar(150) NOT NULL,
-  `estado` enum('Ativo','Inativo') NOT NULL DEFAULT 'Ativo',
+  `estado` enum('Ativo','Inativo','Terminado') NOT NULL DEFAULT 'Ativo',
   `cargo` varchar(100) NOT NULL,
   `departamento` varchar(100) NOT NULL,
   `tipo_trabalhador` enum('Efetivo','Temporário','Estagiário','Autônomo','Freelancer','Terceirizado','Intermitente','Voluntário') NOT NULL,
   `num_conta_bancaria` varchar(30) NOT NULL,
-  `banco` enum('BAI','BIC') NOT NULL,
+  `banco` varchar(10) NOT NULL,
   `iban` varchar(35) NOT NULL,
   `salario_base` decimal(10,2) NOT NULL DEFAULT 0.00,
   `num_ss` varchar(30) NOT NULL,
   `data_admissao` date NOT NULL DEFAULT curdate(),
   `empresa_id` int(11) NOT NULL,
-  `status` varchar(20) DEFAULT 'pendente_biometria'
+  `status` varchar(20) DEFAULT 'pendente_biometria',
+  `data_termino` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 --
 -- Dumping data for table `funcionario`
 --
 
-INSERT INTO `funcionario` (`id_fun`, `num_mecanografico`, `nome`, `foto`, `bi`, `emissao_bi`, `validade_bi`, `data_nascimento`, `pais`, `morada`, `genero`, `num_agregados`, `contato_emergencia`, `nome_contato_emergencia`, `telemovel`, `email`, `estado`, `cargo`, `departamento`, `tipo_trabalhador`, `num_conta_bancaria`, `banco`, `iban`, `salario_base`, `num_ss`, `data_admissao`, `empresa_id`, `status`) VALUES
-(1, 'EMP-0001', 'Kimi Carvalho', NULL, '32432432423', '2025-05-06', '2025-05-30', '2025-04-29', 'angola', 'rua Pedro de Castro Van-Dunem Loy, Casa 4, Vila Ecocampo', 'Masculino', 6, '', '', '924135515', 'kienukimidecarvalho@gmail.com', 'Ativo', 'Analista Financeiro', 'tecnologia', 'Temporário', '1111', 'BAI', '678786', 6666.00, '2432432432', '2025-05-28', 2, 'pendente_biometria'),
-(7, 'EMP-0002', 'Jorge Mundula', NULL, '32432432423322', '2025-05-05', '2025-06-05', '2025-05-06', 'angola', 'Fubu', 'Masculino', 2, '924135515', 'Kimi Carvalho', '924135515', 'jorgemundula@gmail.com', 'Ativo', '2', '2', 'Efetivo', '111111154234', 'BAI', '432432432425', 220000.00, '243243243243123123324', '2025-05-31', 2, 'pendente_biometria');
+INSERT INTO `funcionario` (`id_fun`, `num_mecanografico`, `nome`, `foto`, `bi`, `emissao_bi`, `validade_bi`, `data_nascimento`, `pais`, `morada`, `genero`, `num_agregados`, `contato_emergencia`, `nome_contato_emergencia`, `telemovel`, `email`, `estado`, `cargo`, `departamento`, `tipo_trabalhador`, `num_conta_bancaria`, `banco`, `iban`, `salario_base`, `num_ss`, `data_admissao`, `empresa_id`, `status`, `data_termino`) VALUES
+(1, 'EMP-0001', 'Kimi Carvalho', NULL, '32432432423', '2025-05-06', '2025-06-30', '2006-12-05', 'angola', 'rua Pedro de Castro Van-Dunem Loy, Casa 4, Vila Ecocampo', 'Masculino', 6, '', '', '924135515', 'kienukimidecarvalho@gmail.com', 'Inativo', '2', '2', 'Efetivo', '1111', 'BPK', '678786', 220000.00, '2432432432', '2025-05-28', 2, 'pendente_biometria', NULL),
+(7, 'EMP-0002', 'Jorge Mundula', NULL, '32432432423322', '2025-05-05', '2025-06-05', '2025-05-06', 'angola', 'Fubu', 'Masculino', 2, '', '', '924135515', 'jorgemundula@gmail.com', 'Terminado', '6', '3', 'Efetivo', '111111154234', 'BPK', '432432432425', 90000.00, '2.432432432431231e20', '2025-05-31', 2, 'pendente_biometria', '2025-06-03 02:56:53'),
+(8, 'EMP-0003', 'Diogo Oliveira', NULL, '32432432423334', '2025-06-01', '2028-10-18', '2006-02-13', 'angola', 'Nova Vida 111', 'Masculino', 1, '924133685', 'Kimi Carvalho', '924135515', 'diogo@gmail.com', 'Ativo', '2', '2', 'Efetivo', '111123432', 'BAI', '324324324235325', 220000.00, '243243243232', '2025-06-02', 2, 'pendente_biometria', NULL),
+(12, 'EMP-0004', 'Kelson Mota', NULL, '32453453242', '2025-05-25', '2025-06-10', '2003-07-17', 'angola', 'Fubu Praça', 'Masculino', 1, '', '', '999999299', 'kelson@gmail.com', 'Terminado', '1', '1', 'Efetivo', '1111324324', 'BAI', '1244324', 333000.00, '2.432432432324324e16', '2025-06-02', 2, 'pendente_biometria', '2025-06-03 22:31:31'),
+(13, 'EMP-0005', 'Josilde Costa', NULL, '12345', '2025-06-01', '2025-06-04', '2005-06-25', 'angola', 'Kilamba ', 'Masculino', 1, '', '', '923456723', 'josilde@gmail.com', 'Ativo', '3', '3', 'Efetivo', '542344', 'BAI', '1234421413432', 300000.00, '3423432423', '2025-06-02', 2, 'pendente_biometria', NULL),
+(43, 'EMP-0006', 'Maros', 'fotos/func_683f7a7adc285.png', '12345678LA10', '2025-06-02', '2025-06-04', '2025-06-01', 'angola', 'Fubu Praça', 'Masculino', 2, '924135515', 'Kimi', '987672434', 'marcos@gmail.com', 'Ativo', '3', '3', 'Efetivo', '5423344', 'BAI', '3243324', 300000.00, '19453232', '2025-06-03', 2, 'pendente_biometria', NULL),
+(44, 'EMP-0007', 'Maria Cose', NULL, '32556', '2025-06-03', '2025-06-06', '2025-06-03', 'angola', 'KK', 'Feminino', 3, '', '', '999435789', 'maria@gmail.com', 'Ativo', '3', '3', 'Efetivo', '324589', 'BPK', '876543', 300000.00, '957432432', '2025-06-05', 2, 'pendente_biometria', NULL);
 
 --
 -- Triggers `funcionario`
@@ -466,7 +543,8 @@ INSERT INTO `log_atividades` (`id`, `adm_id`, `acao`, `ip_address`, `data_hora`)
 (3, 4, 'Login Efetuado', '::1', '2025-05-30 19:31:03'),
 (4, 4, 'Login Efetuado', '::1', '2025-05-30 19:32:59'),
 (5, 4, 'Login Efetuado', '::1', '2025-05-30 23:26:10'),
-(6, 8, 'Login Efetuado', '::1', '2025-05-30 23:34:06');
+(6, 8, 'Login Efetuado', '::1', '2025-05-30 23:34:06'),
+(7, 4, 'Login Efetuado', '::1', '2025-06-02 19:06:12');
 
 -- --------------------------------------------------------
 
@@ -518,20 +596,128 @@ CREATE TABLE `registros_ponto` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `turnos_trabalho`
+-- Table structure for table `subsidios_funcionarios`
 --
 
-CREATE TABLE `turnos_trabalho` (
+CREATE TABLE `subsidios_funcionarios` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `funcionario_id` int(11) NOT NULL,
+  `subsidio_id` int(11) NOT NULL,
+  `subsidio_padrao_id` int(11) DEFAULT NULL,
+  `tipo_subsidio` enum('obrigatorio','opcional','personalizado') NOT NULL,
+  `ativo` tinyint(1) DEFAULT 1,
+  `data_criacao` timestamp NOT NULL DEFAULT current_timestamp(),
+  `data_atualizacao` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_subsidio_funcionario` (`funcionario_id`,`subsidio_id`,`tipo_subsidio`),
+  KEY `funcionario_id` (`funcionario_id`),
+  KEY `fk_subsidio_funcionario` (`subsidio_id`),
+  KEY `fk_subsidio_padrao` (`subsidio_padrao_id`),
+  CONSTRAINT `fk_funcionario_subsidio` FOREIGN KEY (`funcionario_id`) REFERENCES `funcionario` (`id_fun`) ON DELETE CASCADE,
+  CONSTRAINT `fk_subsidio_funcionario` FOREIGN KEY (`subsidio_id`) REFERENCES `subsidios_personalizados` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_subsidio_padrao` FOREIGN KEY (`subsidio_padrao_id`) REFERENCES `subsidios_padrao` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `subsidios_padrao`
+--
+
+CREATE TABLE `subsidios_padrao` (
+  `id` int(11) NOT NULL,
+  `nome` varchar(100) NOT NULL,
+  `tipo` enum('obrigatorio','opcional') NOT NULL,
+  `valor_padrao` decimal(10,2) DEFAULT NULL,
+  `unidade` varchar(20) DEFAULT NULL,
+  `data_criacao` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `subsidios_padrao`
+--
+
+INSERT INTO `subsidios_padrao` (`id`, `nome`, `tipo`, `valor_padrao`, `unidade`, `data_criacao`) VALUES
+(1, 'Férias', 'obrigatorio', NULL, NULL, '2025-06-06 15:39:26'),
+(2, '13º Mês', 'obrigatorio', NULL, NULL, '2025-06-06 15:39:26'),
+(3, 'Subsídio de Alimentação', 'obrigatorio', NULL, 'Kz/dia', '2025-06-06 15:39:26'),
+(4, 'Subsídio de Transporte', 'obrigatorio', NULL, 'Kz/dia', '2025-06-06 15:39:26'),
+(5, 'Subsídio de Natal', 'opcional', NULL, NULL, '2025-06-06 15:39:26'),
+(6, 'Subsídio de Páscoa', 'opcional', NULL, NULL, '2025-06-06 15:39:26');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `subsidios_personalizados`
+--
+
+CREATE TABLE `subsidios_personalizados` (
   `id` int(11) NOT NULL,
   `empresa_id` int(11) NOT NULL,
   `nome` varchar(100) NOT NULL,
-  `dias_semana` varchar(100) NOT NULL,
-  `hora_entrada` time NOT NULL,
-  `hora_saida` time NOT NULL,
-  `almoco_inicio` time NOT NULL,
-  `almoco_fim` time NOT NULL,
+  `tipo` enum('valor_fixo','percentagem') NOT NULL,
+  `valor_padrao` decimal(10,2) DEFAULT NULL,
+  `unidade` varchar(20) DEFAULT NULL,
+  `permitir_personalizacao` tinyint(1) DEFAULT 1,
   `data_criacao` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `subsidios_personalizados`
+--
+
+INSERT INTO `subsidios_personalizados` (`id`, `empresa_id`, `nome`, `tipo`, `valor_padrao`, `unidade`, `permitir_personalizacao`, `data_criacao`) VALUES
+(5, 2, 'Kk2', 'percentagem', 15.00, '0', 1, '2025-06-05 23:15:50'),
+(6, 2, 'Kkf', 'valor_fixo', 1111.00, 'Kz/dia útil', 1, '2025-06-05 23:17:50');
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `vw_funcionarios_terminados`
+-- (See below for the actual view)
+--
+CREATE TABLE `vw_funcionarios_terminados` (
+`id_fun` int(11)
+,`num_mecanografico` varchar(20)
+,`nome` varchar(100)
+,`foto` varchar(255)
+,`bi` varchar(14)
+,`emissao_bi` date
+,`validade_bi` date
+,`data_nascimento` date
+,`pais` varchar(50)
+,`morada` varchar(255)
+,`genero` enum('Masculino','Feminino')
+,`num_agregados` int(11)
+,`telemovel` varchar(20)
+,`email` varchar(150)
+,`estado` enum('Ativo','Inativo','Terminado')
+,`data_termino` datetime
+,`cargo_nome` varchar(100)
+,`departamento_nome` varchar(100)
+,`tipo_trabalhador` enum('Efetivo','Temporário','Estagiário','Autônomo','Freelancer','Terceirizado','Intermitente','Voluntário')
+,`num_ss` varchar(30)
+,`data_admissao` date
+,`dias_terminado` int(7)
+);
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `feriados_angola_formatados`
+--
+DROP TABLE IF EXISTS `feriados_angola_formatados`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `feriados_angola_formatados`  AS SELECT `feriados_angola`.`id` AS `id`, `feriados_angola`.`data_feriado` AS `data_feriado`, `formata_data_pt`(`feriados_angola`.`data_feriado`) AS `data_feriado_pt`, `feriados_angola`.`nome_feriado` AS `nome_feriado` FROM `feriados_angola` ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `vw_funcionarios_terminados`
+--
+DROP TABLE IF EXISTS `vw_funcionarios_terminados`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vw_funcionarios_terminados`  AS SELECT `f`.`id_fun` AS `id_fun`, `f`.`num_mecanografico` AS `num_mecanografico`, `f`.`nome` AS `nome`, `f`.`foto` AS `foto`, `f`.`bi` AS `bi`, `f`.`emissao_bi` AS `emissao_bi`, `f`.`validade_bi` AS `validade_bi`, `f`.`data_nascimento` AS `data_nascimento`, `f`.`pais` AS `pais`, `f`.`morada` AS `morada`, `f`.`genero` AS `genero`, `f`.`num_agregados` AS `num_agregados`, `f`.`telemovel` AS `telemovel`, `f`.`email` AS `email`, `f`.`estado` AS `estado`, `f`.`data_termino` AS `data_termino`, `c`.`nome` AS `cargo_nome`, `d`.`nome` AS `departamento_nome`, `f`.`tipo_trabalhador` AS `tipo_trabalhador`, `f`.`num_ss` AS `num_ss`, `f`.`data_admissao` AS `data_admissao`, to_days(curdate()) - to_days(`f`.`data_termino`) AS `dias_terminado` FROM ((`funcionario` `f` left join `cargos` `c` on(`f`.`cargo` = `c`.`id`)) left join `departamentos` `d` on(`f`.`departamento` = `d`.`id`)) WHERE `f`.`estado` = 'Terminado' ORDER BY `f`.`data_termino` DESC ;
 
 --
 -- Indexes for dumped tables
@@ -625,6 +811,12 @@ ALTER TABLE `falta`
   ADD KEY `fk_falta_funcionario1_idx` (`fun_id`);
 
 --
+-- Indexes for table `feriados_angola`
+--
+ALTER TABLE `feriados_angola`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `funcionario`
 --
 ALTER TABLE `funcionario`
@@ -635,7 +827,8 @@ ALTER TABLE `funcionario`
   ADD UNIQUE KEY `iban` (`iban`),
   ADD UNIQUE KEY `num_ss` (`num_ss`),
   ADD UNIQUE KEY `num_mecanografico` (`num_mecanografico`),
-  ADD KEY `empresa_id` (`empresa_id`);
+  ADD KEY `empresa_id` (`empresa_id`),
+  ADD KEY `idx_estado_data_termino` (`estado`,`data_termino`);
 
 --
 -- Indexes for table `log_atividades`
@@ -667,9 +860,15 @@ ALTER TABLE `registros_ponto`
   ADD KEY `data` (`data`);
 
 --
--- Indexes for table `turnos_trabalho`
+-- Indexes for table `subsidios_padrao`
 --
-ALTER TABLE `turnos_trabalho`
+ALTER TABLE `subsidios_padrao`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `subsidios_personalizados`
+--
+ALTER TABLE `subsidios_personalizados`
   ADD PRIMARY KEY (`id`),
   ADD KEY `empresa_id` (`empresa_id`);
 
@@ -705,7 +904,7 @@ ALTER TABLE `beneficios`
 -- AUTO_INCREMENT for table `cargos`
 --
 ALTER TABLE `cargos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `configuracoes_seguranca`
@@ -729,7 +928,7 @@ ALTER TABLE `dispositivos_confiaveis`
 -- AUTO_INCREMENT for table `documentos`
 --
 ALTER TABLE `documentos`
-  MODIFY `id_documento` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_documento` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `empresa`
@@ -744,16 +943,22 @@ ALTER TABLE `falta`
   MODIFY `id_falta` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `feriados_angola`
+--
+ALTER TABLE `feriados_angola`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+
+--
 -- AUTO_INCREMENT for table `funcionario`
 --
 ALTER TABLE `funcionario`
-  MODIFY `id_fun` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id_fun` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=45;
 
 --
 -- AUTO_INCREMENT for table `log_atividades`
 --
 ALTER TABLE `log_atividades`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `politicas_trabalho`
@@ -774,10 +979,16 @@ ALTER TABLE `registros_ponto`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `turnos_trabalho`
+-- AUTO_INCREMENT for table `subsidios_padrao`
 --
-ALTER TABLE `turnos_trabalho`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `subsidios_padrao`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `subsidios_personalizados`
+--
+ALTER TABLE `subsidios_personalizados`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- Constraints for dumped tables
@@ -876,10 +1087,10 @@ ALTER TABLE `registros_ponto`
   ADD CONSTRAINT `registros_ponto_ibfk_1` FOREIGN KEY (`funcionario_id`) REFERENCES `funcionario` (`id_fun`);
 
 --
--- Constraints for table `turnos_trabalho`
+-- Constraints for table `subsidios_padrao`
 --
-ALTER TABLE `turnos_trabalho`
-  ADD CONSTRAINT `turnos_trabalho_ibfk_1` FOREIGN KEY (`empresa_id`) REFERENCES `empresa` (`id_empresa`);
+ALTER TABLE `subsidios_padrao`
+  ADD CONSTRAINT `subsidios_padrao_ibfk_1` FOREIGN KEY (`id`) REFERENCES `subsidios_funcionarios` (`subsidio_padrao_id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

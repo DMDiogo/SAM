@@ -21,6 +21,33 @@ if (!isset($_SESSION['id_empresa'])) {
 
 $empresa_id = $_SESSION['id_empresa']; // Recupera o id_empresa da sessão
 
+// Capturar o departamento selecionado no filtro, se houver
+$departamento_selecionado = isset($_GET['departamento_filtro']) ? $_GET['departamento_filtro'] : '';
+
+// Consulta para buscar os departamentos ativos para o filtro
+$sql_departamentos_filtro = "SELECT id, nome FROM departamentos WHERE empresa_id = ? ORDER BY nome";
+$stmt_departamentos_filtro = $conn->prepare($sql_departamentos_filtro);
+
+$departamentos_filtro = [];
+if ($stmt_departamentos_filtro) {
+    $stmt_departamentos_filtro->bind_param("i", $empresa_id);
+    $stmt_departamentos_filtro->execute();
+    $result_departamentos_filtro = $stmt_departamentos_filtro->get_result();
+    while($row = $result_departamentos_filtro->fetch_assoc()) {
+        $departamentos_filtro[] = $row;
+    }
+    $stmt_departamentos_filtro->close();
+} else {
+    // Logar ou tratar erro na preparação da consulta de departamentos
+    error_log("Erro na preparação da consulta de departamentos para filtro: " . $conn->error);
+}
+
+// Debug: Exibir o valor do departamento selecionado no filtro
+echo "<!-- Departamento selecionado: " . htmlspecialchars($departamento_selecionado) . " -->";
+
+// Capturar o estado selecionado no filtro
+$estado_filtro = isset($_GET['estado_filtro']) ? $_GET['estado_filtro'] : 'ativos';
+
 // Configuração da paginação
 $registros_por_pagina = 10;
 $pagina_atual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
@@ -29,20 +56,106 @@ $offset = ($pagina_atual - 1) * $registros_por_pagina;
 // Filtro de busca
 $search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : '';
 
-// Consulta para contar o total de registros filtrados por empresa_id
-$result_total = mysqli_query($conn, "SELECT COUNT(*) AS total FROM funcionario WHERE nome LIKE '%$search%' AND empresa_id = $empresa_id");
-$total_registros = mysqli_fetch_assoc($result_total)['total'];
+// Consulta para contar o total de registros filtrados
+// (Precisa ser atualizada para considerar o filtro de departamento)
+$sql_count = "SELECT COUNT(*) AS total FROM funcionario f ";
+$count_params = [];
+$count_types = '';
+
+// Condições WHERE
+$where_clauses = ["f.nome LIKE ?", "f.empresa_id = ?"];
+$sql_params = ['%' . $search . '%', $empresa_id];
+$sql_types = 'si';
+
+// Adicionar filtro de estado
+if ($estado_filtro === 'terminados') {
+    $where_clauses[] = "f.estado = 'Terminado'";
+    // Adicionar ordenação por data de término
+    $order_by = "ORDER BY f.data_termino DESC, f.num_mecanografico ASC";
+} else {
+    $where_clauses[] = "f.estado IN ('Ativo', 'Inativo')";
+    $order_by = "ORDER BY f.num_mecanografico ASC";
+}
+
+// Adicionar filtro de departamento se selecionado
+if (!empty($departamento_selecionado) && $departamento_selecionado !== 'todos') {
+    $where_clauses[] = "f.departamento = ?";
+    $sql_params[] = $departamento_selecionado;
+    $sql_types .= 'i';
+
+    // A consulta de contagem também precisa do join se o filtro de departamento for aplicado
+     $sql_count .= "INNER JOIN departamentos d ON f.departamento = d.id ";
+     $count_where_clauses = ["f.nome LIKE ?", "f.empresa_id = ?", "f.departamento = ?"];
+     $count_params = ['%' . $search . '%', $empresa_id, $departamento_selecionado];
+     $count_types = 'sii';
+
+} else {
+    // Consulta de contagem sem filtro de departamento
+    $count_where_clauses = ["f.nome LIKE ?", "f.empresa_id = ?"];
+    $count_params = ['%' . $search . '%', $empresa_id];
+    $count_types = 'si';
+}
+
+$sql_count .= " WHERE " . implode(" AND ", $count_where_clauses);
+
+$stmt_count = $conn->prepare($sql_count);
+
+if ($stmt_count) {
+    $stmt_count->bind_param($count_types, ...$count_params);
+    $stmt_count->execute();
+    $result_total = $stmt_count->get_result();
+    $total_registros = $result_total->fetch_assoc()['total'];
+    $stmt_count->close();
+} else {
+     // Logar ou tratar erro na preparação da consulta de contagem
+    error_log("Erro na preparação da consulta de contagem com filtro: " . $conn->error);
+    $total_registros = 0; // Definir como 0 para evitar divisão por zero
+}
+
 $total_paginas = ceil($total_registros / $registros_por_pagina);
 
-// Consulta para recuperar os funcionários filtrados por empresa_id
-$sql = "SELECT id_fun, num_mecanografico, nome, foto, bi, emissao_bi, validade_bi, data_nascimento, 
-        pais, morada, genero, num_agregados, telemovel, email, estado, cargo, departamento, 
-        tipo_trabalhador, num_ss, data_admissao 
-        FROM funcionario 
-        WHERE nome LIKE '%$search%' AND empresa_id = $empresa_id
-        LIMIT $registros_por_pagina OFFSET $offset";
+// Consulta principal para recuperar os funcionários filtrados
+$sql = "SELECT f.id_fun, f.num_mecanografico, f.nome, f.foto, f.bi, f.emissao_bi, f.validade_bi, f.data_nascimento, 
+        f.pais, f.morada, f.genero, f.num_agregados, f.telemovel, f.email, f.estado, f.data_termino,
+        c.nome as cargo_nome, d.nome as departamento_nome, 
+        f.tipo_trabalhador, f.num_ss, f.data_admissao 
+        FROM funcionario f
+        LEFT JOIN cargos c ON f.cargo = c.id
+        LEFT JOIN departamentos d ON f.departamento = d.id
+        WHERE " . implode(" AND ", $where_clauses) . "
+        " . $order_by . "
+        LIMIT ? OFFSET ?";
 
-$result = mysqli_query($conn, $sql);
+$stmt = $conn->prepare($sql);
+
+// Adicionar parâmetros da paginação aos parâmetros existentes
+$sql_params[] = $registros_por_pagina;
+$sql_params[] = $offset;
+$sql_types .= 'ii';
+
+$result = false; // Inicializa $result como false
+
+if ($stmt) {
+    // Lidar com o bind_param de forma dinâmica
+    $bind_params = array();
+    $bind_params[] = &$sql_types;
+    for ($i = 0; $i < count($sql_params); $i++) {
+        $bind_params[] = &$sql_params[$i];
+    }
+    call_user_func_array(array($stmt, 'bind_param'), $bind_params);
+
+    if ($stmt->execute()) {
+        $result = $stmt->get_result();
+    } else {
+         // Logar erro na execução da consulta principal
+        error_log("Erro na execução da consulta principal: " . $stmt->error);
+    }
+    $stmt->close();
+} else {
+     // Logar erro na preparação da consulta principal
+    error_log("Erro na preparação da consulta principal: " . $conn->error);
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -61,6 +174,13 @@ $result = mysqli_query($conn, $sql);
     margin-bottom: 30px;
 }
 
+.filters form {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* Adiciona espaçamento entre os selects e a search-bar */
+    width: 100%; /* Permite que a barra de pesquisa ocupe o espaço restante */
+}
+
 .filter-select {
     background-color: white;
     border: 1px solid #ddd;
@@ -69,6 +189,7 @@ $result = mysqli_query($conn, $sql);
     color: #000;
     font-size: 14px;
     width: 180px;
+    height: 40px; /* Altura fixa para alinhamento */
 }
 
 .search-bar {
@@ -76,7 +197,7 @@ $result = mysqli_query($conn, $sql);
     max-width: 300px;
     background-color: white;
     border: 1px solid #ddd;
-    padding: 0;
+    padding: 0 15px; /* Adiciona padding interno ao container */
     border-radius: 25px;
     display: flex;
     align-items: center;
@@ -88,7 +209,7 @@ $result = mysqli_query($conn, $sql);
     display: flex;
     width: 100%;
     align-items: center;
-    padding: 0 15px;
+    padding: 0; /* Remove padding do formulário interno */
 }
 
 .search-bar input {
@@ -99,7 +220,8 @@ $result = mysqli_query($conn, $sql);
     color: #000;
     font-size: 14px;
     height: 100%;
-    padding: 0;
+    padding: 0; /* Manter padding 0 no input, o padding externo no .search-bar já o afasta */
+    flex-shrink: 1;
 }
 
 .search-bar button {
@@ -158,6 +280,8 @@ $result = mysqli_query($conn, $sql);
     position: sticky;
     top: 0;
     z-index: 10;
+    border-left: none !important;
+    transition: none !important;
 }
 
 .tabela-funcionarios td {
@@ -170,8 +294,16 @@ $result = mysqli_query($conn, $sql);
     border-bottom: none;
 }
 
-.tabela-funcionarios tr:hover {
+.tabela-funcionarios tbody tr {
+    transition: all 0.2s ease-in-out;
+    border-left: 0px solid #64c2a7;
+}
+
+.tabela-funcionarios tbody tr:hover {
     background-color: #f9f9f9;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    border-left: 5px solid #64c2a7;
+    transform: translateX(2px);
 }
 
 th, td {
@@ -182,16 +314,29 @@ th, td {
     border-right: 1px solid #ccc; 
 }
 
-tr:nth-child(odd) {
+tr:nth-child(odd):not(:first-child) {
     background-color: #f7f7f7;
 }
 
+/* Dark mode */
+body.dark .tabela-funcionarios th {
+    background-color: #2C2C2C;
+    color: #e0e0e0;
+    border-bottom: 1px solid #444;
+    border-left: none !important;
+    transition: none !important;
+}
 
-.tabela-funcionarios tbody tr:hover {
-    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1); 
-    border-left: 5px solid #64c2a7; 
-    border-radius: 8px;
-    transition: transform 0.2s ease, opacity 0.1s ease;
+body.dark .tabela-funcionarios tbody tr {
+    transition: all 0.2s ease-in-out;
+    border-left: 0px solid #64c2a7;
+}
+
+body.dark .tabela-funcionarios tbody tr:hover {
+    background-color: rgba(100, 194, 167, 0.1);
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+    border-left: 5px solid #64c2a7;
+    transform: translateX(2px);
 }
 
 .status-ativo {
@@ -236,6 +381,13 @@ tr:nth-child(odd) {
     background-color: #64c2a7;
     color: white;
     font-weight: 500;
+}
+
+/* Adicionado: Estilos para a imagem dentro do user-avatar */
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Garante que a imagem cubra a área do contêiner sem distorção */
 }
 
 /* Paginação */
@@ -432,6 +584,174 @@ body.dark ::-webkit-scrollbar-track {
 body.dark ::-webkit-scrollbar-thumb {
     background: #64c2a7;
 }
+
+/* Estilos para a div que envolve a foto e o nome */
+.tabela-funcionarios .user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Estilos para a div que envolve os botões de ação */
+.acoes {
+    display: flex;
+    gap: 10px;
+}
+
+/* Estilos para os botões de editar e apagar */
+.btn-edit,
+.btn-delete {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+    font-size: 16px;
+}
+
+.btn-edit {
+    color: #3EB489; /* Cor verde */
+}
+
+.btn-delete {
+    color: #f44336; /* Cor vermelha */
+}
+
+.btn-edit:hover,
+.btn-delete:hover {
+    transform: scale(1.1); /* Efeito de zoom ao passar o mouse */
+}
+
+.btn-edit i,
+.btn-delete i {
+    font-size: 18px; /* Tamanho dos ícones */
+}
+
+/* Estilos para o tooltip do cargo bloqueado */
+.readonly-container[title] {
+    position: relative;
+    cursor: not-allowed;
+}
+
+.readonly-container[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 5px;
+    z-index: 1001;
+    white-space: nowrap;
+}
+
+/* Adicionar estilos para a tabela de terminados */
+<?php if ($estado_filtro === 'terminados'): ?>
+<style>
+    .table-container {
+        background-color: white;
+        border: 1px solid #ffcdd2;
+    }
+    
+    .tabela-funcionarios th {
+        background-color: #ffebee;
+        color: #c62828;
+        border-bottom: 1px solid #ffcdd2;
+        border-left: none !important;
+        transition: none !important;
+    }
+    
+    .tabela-funcionarios td {
+        border-bottom: 1px solid #ffcdd2;
+        border-right: 1px solid #ffcdd2;
+    }
+    
+    .tabela-funcionarios tbody tr {
+        background-color: white;
+        transition: all 0.2s ease-in-out;
+        border-left: 0px solid #c62828;
+    }
+    
+    .tabela-funcionarios tbody tr:nth-child(odd) {
+        background-color: #f7f7f7;
+    }
+    
+    .tabela-funcionarios tbody tr:hover {
+        background-color: #ffebee;
+        box-shadow: 0px 4px 10px rgba(198, 40, 40, 0.1);
+        border-left: 5px solid #c62828;
+        transform: translateX(2px);
+    }
+    
+    .status-terminado {
+        color: #c62828;
+        font-weight: 500;
+    }
+
+    /* Avatar predefinido */
+    .user-avatar {
+        background-color: #64c2a7;
+    }
+
+    /* Paginação */
+    .pagination-item.active {
+        background-color: #64c2a7;
+        color: white;
+    }
+    
+    /* Dark mode para terminados */
+    body.dark .table-container {
+        background-color: #1E1E1E;
+        border-color: #4a2c2c;
+    }
+    
+    body.dark .tabela-funcionarios th {
+        background-color: #3d2222;
+        color: #ff8a8a;
+        border-bottom-color: #4a2c2c;
+        border-left: none !important;
+        transition: none !important;
+    }
+    
+    body.dark .tabela-funcionarios td {
+        border-color: #4a2c2c;
+    }
+    
+    body.dark .tabela-funcionarios tbody tr {
+        background-color: #1E1E1E;
+        transition: all 0.2s ease-in-out;
+        border-left: 0px solid #c62828;
+    }
+    
+    body.dark .tabela-funcionarios tbody tr:nth-child(odd) {
+        background-color: #222;
+    }
+    
+    body.dark .tabela-funcionarios tbody tr:hover {
+        background-color: #3d2222;
+        box-shadow: 0px 4px 10px rgba(198, 40, 40, 0.2);
+        border-left: 5px solid #c62828;
+        transform: translateX(2px);
+    }
+
+    /* Dark mode avatar predefinido */
+    body.dark .user-avatar {
+        background-color: #64c2a7;
+    }
+
+    /* Dark mode paginação */
+    body.dark .pagination-item.active {
+        background-color: #64c2a7;
+        color: white;
+    }
+</style>
+<?php endif; ?>
 </style>
     <title>SAM - Funcionários</title>
 </head>
@@ -473,37 +793,37 @@ body.dark ::-webkit-scrollbar-thumb {
         </header>
 
         <div class="filters">
-        <select class="filter-select">
-                <option value="" disabled selected>Selecione o departamento</option>
-                            <option value="administrativo">Administrativo</option>
-                            <option value="financeiro">Financeiro</option>
-                            <option value="rh">Recursos Humanos</option>
-                            <option value="tecnologia">Tecnologia da Informação</option>
-                            <option value="marketing">Marketing</option>
-                            <option value="vendas">Vendas</option>
-                            <option value="juridico">Jurídico</option>
-                            <option value="logistica">Logística</option>
-                            <option value="operacional">Operacional</option>
+            <form method="GET" action="funcionarios.php">
+                <select class="filter-select" name="departamento_filtro" onchange="this.form.submit()">
+                    <option value="todos" <?php echo $departamento_selecionado === 'todos' ? 'selected' : ''; ?>>Todos</option>
+                    <?php foreach ($departamentos_filtro as $depto): ?>
+                        <option value="<?php echo $depto['id']; ?>" <?php echo $departamento_selecionado == $depto['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($depto['nome']); ?></option>
+                    <?php endforeach; ?>
             </select>
-            <select class="filter-select">
-                <option value="" disabled selected>Selecione o tipo de trabalhador</option>
-                            <option value="efetivo">Trabalhador Efetivo</option>
-                            <option value="temporario">Trabalhador Temporário</option>
-                            <option value="estagiario">Trabalhador Estagiário</option>
-                            <option value="autonomo">Trabalhador Autônomo</option>
-                            <option value="freelancer">Trabalhador Freelancer</option>
-                            <option value="terceirizado">Trabalhador Terceirizado</option>
-                            <option value="intermitente">Trabalhador Intermitente</option>
-                            <option value="voluntario">Trabalhador Voluntário</option>
+
+                <select class="filter-select" name="estado_filtro" onchange="this.form.submit()">
+                    <option value="ativos" <?php echo (!isset($_GET['estado_filtro']) || $_GET['estado_filtro'] === 'ativos') ? 'selected' : ''; ?>>Ativos e Inativos</option>
+                    <option value="terminados" <?php echo (isset($_GET['estado_filtro']) && $_GET['estado_filtro'] === 'terminados') ? 'selected' : ''; ?>>Terminados</option>
+                </select>
+
+                <select class="filter-select" name="tipo_trabalhador_filtro" onchange="this.form.submit()">
+                     <option value="todos" <?php echo (isset($_GET['tipo_trabalhador_filtro']) && $_GET['tipo_trabalhador_filtro'] === 'todos') ? 'selected' : ''; ?>>Todos</option>
+                     <option value="efetivo" <?php echo (isset($_GET['tipo_trabalhador_filtro']) && $_GET['tipo_trabalhador_filtro'] === 'efetivo') ? 'selected' : ''; ?>>Trabalhador Efetivo</option>
+                     <option value="temporario" <?php echo (isset($_GET['tipo_trabalhador_filtro']) && $_GET['tipo_trabalhador_filtro'] === 'temporario') ? 'selected' : ''; ?>>Trabalhador Temporário</option>
+                     <option value="estagiario" <?php echo (isset($_GET['tipo_trabalhador_filtro']) && $_GET['tipo_trabalhador_filtro'] === 'estagiario') ? 'selected' : ''; ?>>Trabalhador Estagiário</option>
+                     <option value="autonomo" <?php echo (isset($_GET['tipo_trabalhador_filtro']) && $_GET['tipo_trabalhador_filtro'] === 'autonomo') ? 'selected' : ''; ?>>Trabalhador Autônomo</option>
+                     <option value="freelancer" <?php echo (isset($_GET['tipo_trabalhador_filtro']) && $_GET['tipo_trabalhador_filtro'] === 'freelancer') ? 'selected' : ''; ?>>Trabalhador Freelancer</option>
+                     <option value="terceirizado" <?php echo (isset($_GET['tipo_trabalhador_filtro']) && $_GET['tipo_trabalhador_filtro'] === 'terceirizado') ? 'selected' : ''; ?>>Trabalhador Terceirizado</option>
+                     <option value="intermitente" <?php echo (isset($_GET['tipo_trabalhador_filtro']) && $_GET['tipo_trabalhador_filtro'] === 'intermitente') ? 'selected' : ''; ?>>Trabalhador Intermitente</option>
+                     <option value="voluntario" <?php echo (isset($_GET['tipo_trabalhador_filtro']) && $_GET['tipo_trabalhador_filtro'] === 'voluntario') ? 'selected' : ''; ?>>Trabalhador Voluntário</option>
             </select>
 
             <div class="search-bar">
-    <form method="GET" action="funcionarios.php">
-        <input type="text" name="search" id="search-input" placeholder="Pesquisar..." autocomplete="off">
+                    <input type="text" name="search" id="search-input" placeholder="Pesquisar..." autocomplete="off" value="<?php echo htmlspecialchars($search); ?>">
         <button type="submit"><i class="fas fa-search search-icon"></i></button>
-    </form>
     <div id="suggestions" class="suggestions-box"></div>
 </div>
+            </form>
         </div>
         
         <div class="table-container">
@@ -528,6 +848,7 @@ body.dark ::-webkit-scrollbar-thumb {
                         <th>Tipo Trabalhador</th>
                         <th>Nº Segurança Social</th>
                         <th>Data Admissão</th>
+                        <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -548,32 +869,33 @@ body.dark ::-webkit-scrollbar-thumb {
                             $estado_class = 'status-inativo';
                         } else if (strpos($estado_texto, 'Terminado') !== false) {
                             $estado_class = 'status-terminado';
+                            // Calcular dias desde o término
+                            $data_termino = new DateTime($row['data_termino']);
+                            $hoje = new DateTime();
+                            $dias_passados = $hoje->diff($data_termino)->days;
+                            $dias_restantes = 30 - $dias_passados;
+                            $estado_texto = "Terminado (Faltam {$dias_restantes}d)";
                         }
                     ?>
-                    <tr onclick="window.location.href='detalhes_funcionario.php?id=<?php echo $row['id_fun']; ?>'">
+                    <tr data-id="<?php echo $row['id_fun']; ?>">
                         <td>
-                            <div style="display: flex; align-items: center; gap: 10px; margin-left:5px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
                                 <div class="user-avatar">
-                                <?php if (!empty($row['foto']) && file_exists($row['foto'])): ?>
-                                    <img src="<?php echo $row['foto']; ?>" alt="" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
-                                <?php else: ?>
-                                    <img src="icones/icons-sam-18.svg" alt="Avatar Padrão" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
-                                <?php endif; ?>
-
+                                    <?php 
+                                        $foto = !empty($row['foto']) && file_exists($row['foto']) ? $row['foto'] : 'icones/icons-sam-18.svg';
+                                    ?>
+                                    <img src="<?php echo $foto; ?>" alt="Foto">
                                 </div>
-                                <strong style="margin-left:10px; margin-right:10px;"><?php echo $row['nome']; ?></strong>
-                            
-                                </div>
+                                <span><?php echo htmlspecialchars($row['nome']); ?></span>
+                            </div>
                         </td>
                         <td><?php echo str_pad($row['num_mecanografico'], 3, '0', STR_PAD_LEFT); ?></td>
-                        <td><?php echo $row['email']; ?></td>
+                        <td><?php echo htmlspecialchars($row['email']); ?></td>
                         <td><?php echo $data_nascimento; ?></td>
                         <td>
-                            <span class="<?php echo $estado_class; ?>">
-                                <?php echo $estado_texto; ?>
-                                <?php if (strpos($estado_texto, 'Terminado') !== false): ?>
-                                    <span>(22d)</span>
-                                <?php else: ?>
+                            <span class="<?php echo $estado_class; ?>" <?php if (strpos($estado_texto, 'Terminado') !== false): ?>title="Daqui a <?php echo $dias_restantes; ?> dias, os dados do funcionário serão permanentemente apagados."<?php endif; ?>>
+                                <?php echo htmlspecialchars($estado_texto); ?>
+                                <?php if (strpos($estado_texto, 'Terminado') === false): ?>
                                     <?php if ($estado_texto == 'Ativo'): ?>
                                         <span class="status-dot"></span>
                                     <?php elseif ($estado_texto == 'Inativo'): ?>
@@ -582,19 +904,47 @@ body.dark ::-webkit-scrollbar-thumb {
                                 <?php endif; ?>
                             </span>
                         </td>
-                        <td><?php echo $row['bi']; ?></td>
+                        <td><?php echo htmlspecialchars($row['bi']); ?></td>
                         <td><?php echo $emissao_bi; ?></td>
                         <td><?php echo $validade_bi; ?></td>
-                        <td><?php echo $row['pais']; ?></td>
-                        <td><?php echo $row['morada']; ?></td>
-                        <td><?php echo $row['genero']; ?></td>
-                        <td><?php echo $row['num_agregados']; ?></td>
-                        <td><?php echo $row['telemovel']; ?></td>
-                        <td><?php echo $row['cargo']; ?></td>
-                        <td><?php echo $row['departamento']; ?></td>
-                        <td><?php echo $row['tipo_trabalhador']; ?></td>
-                        <td><?php echo $row['num_ss']; ?></td>
+                        <td><?php echo htmlspecialchars($row['pais']); ?></td>
+                        <td><?php echo htmlspecialchars($row['morada']); ?></td>
+                        <td><?php echo htmlspecialchars($row['genero']); ?></td>
+                        <td><?php echo htmlspecialchars($row['num_agregados']); ?></td>
+                        <td><?php echo htmlspecialchars($row['telemovel']); ?></td>
+                        <td><?php echo htmlspecialchars($row['cargo_nome']); ?></td>
+                        <td><?php echo htmlspecialchars($row['departamento_nome']); ?></td>
+                        <td><?php echo htmlspecialchars($row['tipo_trabalhador']); ?></td>
+                        <td><?php echo htmlspecialchars($row['num_ss']); ?></td>
                         <td><?php echo $data_admissao; ?></td>
+                        <td>
+                             <div class='acoes'>
+                                <?php if (strpos($estado_texto, 'Terminado') !== false): ?>
+                                    <form action='restaurar_funcionario.php' method='POST' style='display:inline;'>
+                                        <input type='hidden' name='id_fun' value='<?php echo $row['id_fun']; ?>'>
+                                        <button type='submit' class='btn-edit' title='Restaurar funcionário'>
+                                            <i class='fas fa-undo'></i>
+                                        </button>
+                                    </form>
+                                    <form action='eliminar_funcionario.php' method='POST' style='display:inline;'>
+                                        <input type='hidden' name='id_fun' value='<?php echo $row['id_fun']; ?>'>
+                                        <button type='submit' class='btn-delete' onclick='return confirm("Tem certeza que deseja eliminar permanentemente este funcionário? Esta ação não pode ser desfeita.")' title='Eliminar permanentemente'>
+                                            <i class='fas fa-trash'></i>
+                                        </button>
+                                    </form>
+                                <?php else: ?>
+                                    <a href='editar_funcionario.php?id=<?php echo $row['id_fun']; ?>' class='btn-edit'>
+                                        <i class='fas fa-edit'></i>
+                                    </a>
+                                    <form action='marcar_terminado.php' method='POST' style='display:inline;'>
+                                        <input type='hidden' name='id_fun' value='<?php echo $row['id_fun']; ?>'>
+                                        <button type='submit' class='btn-delete' onclick='return confirm("Tem certeza que deseja marcar este funcionário como terminado? Ele ficará disponível para exclusão permanente após 30 dias.")'>
+                                            <i class='fas fa-times'></i>
+                                        </button>
+                                    </form>
+                                <?php endif; ?>
+                            </div>
+                        </td>
                     </tr>
                     <?php } ?>
                 </tbody>
@@ -635,6 +985,25 @@ body.dark ::-webkit-scrollbar-thumb {
         updateTime();
 
         setInterval(updateTime, 1000);
+
+        // Script para redirecionar ao clicar na linha da tabela
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabelaFuncionarios = document.querySelector('.tabela-funcionarios tbody');
+            if (tabelaFuncionarios) {
+                tabelaFuncionarios.addEventListener('click', function(event) {
+                    // Encontra a linha (tr) clicada, subindo a partir do elemento clicado
+                    const row = event.target.closest('tr');
+                    
+                    // Verifica se uma linha foi encontrada e se não foi o clique nos botões de ação
+                    if (row && !event.target.closest('div.acoes') && !event.target.closest('a.btn-edit') && !event.target.closest('button.btn-delete')) {
+                        const funcionarioId = row.getAttribute('data-id');
+                        if (funcionarioId) {
+                            window.location.href = `detalhes_funcionario.php?id=${funcionarioId}`;
+                        }
+                    }
+                });
+            }
+        });
     </script>
     <script src="sugestoes.js"></script>
     <script src="./js/theme.js"></script>

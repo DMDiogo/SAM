@@ -4,6 +4,11 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
+// Limpar os dados do formulário apenas quando for uma requisição GET (F5) e não houver erro
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && !isset($_SESSION['error'])) {
+    unset($_SESSION['form_data']);
+}
+
 include('protect.php');
 include('config.php'); // Conexão com o banco
 include_once('includes/sync_app.php'); // Incluir arquivo de sincronização
@@ -59,6 +64,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $salario_base = $_POST['salario_base'] ?? 0.00;
     $num_ss = $_POST['num_ss'] ?? '';
 
+    // Salvar os dados do formulário na sessão antes de qualquer validação
+    $_SESSION['form_data'] = $_POST;
+
     // Verificar se "Outro" foi selecionado e usar o valor do campo adicional
     /* Removido:
     if ($banco === 'OUTRO') {
@@ -68,7 +76,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // Pegando o ID do admin logado
     if (!isset($_SESSION['id_adm'])) {
-        die("Erro: Sessão expirada ou admin não autenticado.");
+        $_SESSION['error'] = "Erro: Sessão expirada ou admin não autenticado.";
+        header("Location: registro.php");
+        exit;
     }
     $id_adm = $_SESSION['id_adm'];
 
@@ -77,7 +87,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $stmt_empresa = $conn->prepare($sql_empresa);
     
     if (!$stmt_empresa) {
-        die("Erro na preparação da consulta da empresa: " . $conn->error);
+        $_SESSION['error'] = "Erro na preparação da consulta da empresa: " . $conn->error;
+        header("Location: registro.php");
+        exit;
     }
 
     $stmt_empresa->bind_param("i", $id_adm);
@@ -88,13 +100,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $empresa = $result_empresa->fetch_assoc();
         $empresa_id = $empresa['id_empresa']; 
     } else {
-        die("Erro: Nenhuma empresa cadastrada para este administrador.");
+        $_SESSION['error'] = "Erro: Nenhuma empresa cadastrada para este administrador.";
+        header("Location: registro.php");
+        exit;
     }
 
     // Diretório para armazenar imagens
     $uploadDir = "fotos/";
     if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0777, true);
+        if (!mkdir($uploadDir, 0777, true)) {
+            $_SESSION['error'] = "Erro ao criar diretório para fotos.";
+            header("Location: registro.php");
+            exit;
+        }
     }
 
     $fotoFinal = NULL; // Por padrão, deixa o campo NULL no banco
@@ -105,9 +123,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $fotoNome = uniqid("func_") . "." . $ext;
         $fotoCaminho = $uploadDir . $fotoNome;
 
-        if (move_uploaded_file($_FILES["foto"]["tmp_name"], $fotoCaminho)) {
-            $fotoFinal = $fotoCaminho; // Guarda o caminho da foto no banco
+        if (!move_uploaded_file($_FILES["foto"]["tmp_name"], $fotoCaminho)) {
+            $_SESSION['error'] = "Erro ao fazer upload da foto.";
+            header("Location: registro.php");
+            exit;
         }
+        $fotoFinal = $fotoCaminho; // Guarda o caminho da foto no banco
     }
 
     // Iniciar transação para garantir integridade dos dados
@@ -124,7 +145,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt = $conn->prepare($sql);
 
         if (!$stmt) {
-            throw new Exception("Erro na preparação da consulta: " . $conn->error);
+            throw new Exception("Não foi possível iniciar o cadastro. Por favor, tente novamente.");
         }
 
         $stmt->bind_param("sssssssssissssssssssdsii", 
@@ -136,7 +157,54 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         );
 
         if (!$stmt->execute()) {
-            throw new Exception("Erro ao cadastrar funcionário: " . $stmt->error);
+            // Verificar se é um erro de duplicação
+            if ($stmt->errno == 1062) {
+                // Extrair o campo duplicado e o valor da mensagem de erro
+                $error_message = $stmt->error;
+                $duplicate_value = '';
+                
+                // Extrair o valor duplicado da mensagem de erro
+                if (preg_match("/'([^']+)' for key/", $error_message, $matches)) {
+                    $duplicate_value = $matches[1];
+                }
+
+                // Criar mensagem amigável baseada no campo duplicado
+                if (strpos($error_message, 'num_conta_bancaria') !== false) {
+                    $error_message = "Ops! Parece que a conta bancária $duplicate_value já está registrada em nosso sistema.";
+                } elseif (strpos($error_message, 'email') !== false) {
+                    $error_message = "Ops! O e-mail $duplicate_value já está cadastrado em nosso sistema.";
+                } elseif (strpos($error_message, 'bi') !== false) {
+                    $error_message = "Ops! O número de BI $duplicate_value já está registrado em nosso sistema.";
+                } elseif (strpos($error_message, 'num_ss') !== false) {
+                    $error_message = "Ops! O número de Segurança Social $duplicate_value já está registrado em nosso sistema.";
+                } else {
+                    $error_message = "Ops! Parece que este registro já existe em nosso sistema.";
+                }
+                
+                // Salvar a mensagem de erro na sessão
+                $_SESSION['error'] = $error_message;
+                header("Location: registro.php");
+                exit;
+            } else {
+                // Mensagens personalizadas para outros tipos de erro
+                switch ($stmt->errno) {
+                    case 1048: // Campo não pode ser nulo
+                        $error_message = "Ops! Parece que alguns campos obrigatórios não foram preenchidos.";
+                        break;
+                    case 1406: // Dados muito longos
+                        $error_message = "Ops! Alguns dados excedem o tamanho permitido.";
+                        break;
+                    case 1452: // Erro de chave estrangeira
+                        $error_message = "Ops! Alguns dados selecionados não são válidos.";
+                        break;
+                    case 1366: // Erro de tipo de dado
+                        $error_message = "Ops! Alguns dados foram preenchidos em formato incorreto.";
+                        break;
+                    default:
+                        $error_message = "Ops! Algo deu errado ao tentar cadastrar o funcionário. Por favor, tente novamente.";
+                }
+                throw new Exception($error_message);
+            }
         }
 
         // Obter o ID do funcionário recém-cadastrado
@@ -148,6 +216,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         // Commit da transação se tudo ocorrer bem
         $conn->commit();
+
+        // Limpar os dados do formulário da sessão após sucesso
+        unset($_SESSION['form_data']);
 
         // Redirecionar com mensagem de sucesso
         $_SESSION['mensagem'] = "Funcionário cadastrado com sucesso!";
@@ -163,7 +234,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             unlink($fotoFinal);
         }
         
-        die("Erro: " . $e->getMessage());
+        // Verificar se é um erro de duplicação
+        if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
+            $error_message = $e->getMessage();
+            $duplicate_value = '';
+            
+            // Extrair o valor duplicado da mensagem de erro
+            if (preg_match("/'([^']+)' for key/", $error_message, $matches)) {
+                $duplicate_value = $matches[1];
+            }
+
+            // Criar mensagem amigável baseada no campo duplicado
+            if (strpos($error_message, 'num_conta_bancaria') !== false) {
+                $_SESSION['error'] = "Ops! Parece que a conta bancária $duplicate_value já está registrada em nosso sistema.";
+            } elseif (strpos($error_message, 'email') !== false) {
+                $_SESSION['error'] = "Ops! O e-mail $duplicate_value já está cadastrado em nosso sistema.";
+            } elseif (strpos($error_message, 'bi') !== false) {
+                $_SESSION['error'] = "Ops! O número de BI $duplicate_value já está registrado em nosso sistema.";
+            } elseif (strpos($error_message, 'num_ss') !== false) {
+                $_SESSION['error'] = "Ops! O número de Segurança Social $duplicate_value já está registrado em nosso sistema.";
+            } else {
+                $_SESSION['error'] = "Ops! Parece que este registro já existe em nosso sistema.";
+            }
+        } else {
+            $_SESSION['error'] = $e->getMessage();
+        }
+        
+        header("Location: registro.php");
+        exit;
     }
 }
 ?>
@@ -238,6 +336,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             right: 10px;
             color: #666;
             font-size: 14px;
+            display: none; /* Começa oculto por padrão */
+        }
+
+        .readonly-container select:disabled ~ .lock-icon {
+            display: block; /* Mostra apenas quando o select está desabilitado */
         }
 
         /* Estilos específicos para o campo Estado */
@@ -615,53 +718,86 @@ body.dark {
         background-image: none !important;
     }
 
-    /* Ajuste do container do select com cadeado */
-    .readonly-container select {
-        padding-right: 30px;
+    /* Estilo para o container do select com cadeado */
+    .readonly-container {
+        position: relative;
+        display: flex; /* Garante que select e ícone fiquem na mesma linha */
+        align-items: center;
         width: 100%;
     }
 
+    /* Estilo base para o select */
+    .readonly-container select {
+        padding-right: 30px; /* Espaço para o ícone/seta */
+        width: 100%;
+        /* Remove a seta padrão do navegador e outros estilos nativos */
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        /* Posição e tamanho para a seta personalizada */
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        background-size: 15px;
+        /* Cor de fundo padrão */
+        background-color: #fff; /* Ou outra cor padrão do tema light */
+        color: #333; /* Cor do texto padrão */
+        border: 1px solid #ccc; /* Borda padrão */
+    }
+
+    /* Adiciona a seta personalizada E controla a cor de fundo/texto/borda quando habilitado */
+    .readonly-container select:not(:disabled) {
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/polyline%3e%3c/svg%3e") !important; /* Adicionado !important */
+        /* Você pode adicionar estilos de cor de fundo, borda, texto aqui se precisar diferenciar habilitado/desabilitado além do disabled */
+        background-color: #fff; /* Exemplo */
+        color: #333; /* Exemplo */
+        border-color: #ccc; /* Exemplo */
+    }
+
+    /* Estilo para select desabilitado */
+    .readonly-container select:disabled {
+        background-image: none !important; /* Garante que a seta personalizada não apareça */
+        background-color: #f0f0f0; /* Cor para indicar que está desabilitado */
+        cursor: not-allowed;
+        color: #555; /* Cor do texto desabilitado */
+        border-color: #ddd; /* Borda desabilitada */
+    }
+
+    /* Estilo para o ícone do cadeado */
     .readonly-container .lock-icon {
         position: absolute;
         right: 10px;
         top: 50%;
         transform: translateY(-50%);
-        pointer-events: none;
+        pointer-events: none; /* Não interfere com cliques no select */
         color: #666;
+        font-size: 14px;
+        /* Controla a visibilidade com opacidade para transição suave */
+        opacity: 0; /* Oculto por padrão */
+        transition: opacity 0.2s ease;
     }
 
-    /* Estilo para o tooltip do cargo bloqueado */
-    .readonly-container[title] {
-        position: relative;
-        cursor: not-allowed;
+    /* Mostra o cadeado apenas quando o select está desabilitado */
+    .readonly-container select:disabled ~ .lock-icon {
+        opacity: 1; /* Visível quando desabilitado */
     }
 
-    .readonly-container[title]:hover::after {
-        content: attr(title);
-        position: absolute;
-        bottom: 100%;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 5px 10px;
-        background-color: #333;
-        color: white;
-        border-radius: 4px;
-        font-size: 12px;
-        white-space: nowrap;
-        z-index: 1000;
-        margin-bottom: 5px;
+    /* Dark Mode Styles */
+    body.dark .readonly-container select:not(:disabled) {
+        background-color: #2C2C2C;
+        color: #e0e0e0;
+        border: 1px solid #444;
+        /* Ajuste a cor da seta SVG para o modo escuro se necessário */
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e0e0e0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/polyline%3e%3c/svg%3e") !important; /* Adicionado !important */ /* Cor #e0e0e0 para a seta no dark mode */
     }
 
-    .readonly-container[title]:hover::before {
-        content: '';
-        position: absolute;
-        bottom: calc(100% - 5px);
-        left: 50%;
-        transform: translateX(-50%);
-        border-width: 5px;
-        border-style: solid;
-        border-color: #333 transparent transparent transparent;
-        z-index: 1000;
+    body.dark .readonly-container select:disabled {
+        background-color: #2C2C2C;
+        color: #888;
+        border: 1px solid #444;
+    }
+
+    body.dark .readonly-container .lock-icon {
+         color: #b0b0b0; /* Cor do cadeado no dark mode */
     }
 
     </style>
@@ -705,6 +841,16 @@ body.dark {
             </div>
         </header>
 
+        <?php if (isset($_SESSION['error'])): ?>
+            <div class="error-message">
+                <i class="fas fa-exclamation-circle"></i>
+                <?php 
+                    echo $_SESSION['error'];
+                    unset($_SESSION['error']); // Limpa a mensagem após exibir
+                ?>
+            </div>
+        <?php endif; ?>
+
         <div class="search-container">
             <input type="text" placeholder="">
             <input type="text" placeholder="">
@@ -722,79 +868,87 @@ body.dark {
 
                     <div class="form-group">
                         <label>Nome do funcionário</label>
-                        <input type="text" id="nome" name="nome" placeholder="Digite aqui" required>
+                        <input type="text" id="nome" name="nome" placeholder="Digite aqui" value="<?php echo isset($_SESSION['form_data']['nome']) ? htmlspecialchars($_SESSION['form_data']['nome']) : ''; ?>" required>
                     </div>
 
                     <div class="form-group">
                         <label>Nº do BI</label>
-                        <input type="text" id="bi" name="bi" placeholder="Digite aqui" required>
+                        <input type="text" id="bi" name="bi" placeholder="Digite aqui" value="<?php echo isset($_SESSION['form_data']['bi']) ? htmlspecialchars($_SESSION['form_data']['bi']) : ''; ?>" required>
                     </div>
                     <div class="form-group">
                         <label>Emissão do BI</label>
-                        <input type="date" id="emissao_bi" name="emissao_bi"e placeholder="Digite aqui" required>
+                        <input type="date" id="emissao_bi" name="emissao_bi" placeholder="Digite aqui" value="<?php echo isset($_SESSION['form_data']['emissao_bi']) ? htmlspecialchars($_SESSION['form_data']['emissao_bi']) : ''; ?>" required>
                     </div>
                     <div class="form-group">
                         <label>Validade do BI</label>
-                        <input type="date" id="validade_bi" name="validade_bi" placeholder="Digite aqui" required>
+                        <input type="date" id="validade_bi" name="validade_bi" placeholder="Digite aqui" value="<?php echo isset($_SESSION['form_data']['validade_bi']) ? htmlspecialchars($_SESSION['form_data']['validade_bi']) : ''; ?>" required>
                     </div>
                     <div class="form-group">
                         <label>Data de Nascimento</label style="white-space: nowrap;">
-                        <input type="date" id="data_nascimento" name="data_nascimento" placeholder="Digite aqui" required>
+                        <input type="date" id="data_nascimento" name="data_nascimento" placeholder="Digite aqui" value="<?php echo isset($_SESSION['form_data']['data_nascimento']) ? htmlspecialchars($_SESSION['form_data']['data_nascimento']) : ''; ?>" required>
                     </div>
                     <div class="form-group">
                         <label>País</label>
                         <select name="pais" id="pais" required>
                             <option value="">Selecione um país</option>
-                            <option value="angola">Angola</option>
-                            <option value="argentina">Argentina</option>
-                            <option value="brasil">Brasil</option>
-                            <option value="canada">Canadá</option>
-                            <option value="chile">Chile</option>
-                            <option value="china">China</option>
-                            <option value="colombia">Colômbia</option>
-                            <option value="espanha">Espanha</option>
-                            <option value="estados_unidos">Estados Unidos</option>
-                            <option value="franca">França</option>
-                            <option value="alemanha">Alemanha</option>
-                            <option value="italia">Itália</option>
-                            <option value="japao">Japão</option>
-                            <option value="mexico">México</option>
-                            <option value="moçambique">Moçambique</option>
-                            <option value="portugal">Portugal</option>
-                            <option value="reino_unido">Reino Unido</option>
-                            <option value="russia">Rússia</option>
-                            <option value="africa_do_sul">África do Sul</option>
-                            <option value="australia">Austrália</option>
-                            <option value="coreia_do_sul">Coreia do Sul</option>
-                            <option value="india">Índia</option>
-                            <option value="indonesia">Indonésia</option>
-                            <option value="nigeria">Nigéria</option>
-                            <option value="venezuela">Venezuela</option>
+                            <?php
+                            $paises = [
+                                'angola' => 'Angola',
+                                'argentina' => 'Argentina',
+                                'brasil' => 'Brasil',
+                                'canada' => 'Canadá',
+                                'chile' => 'Chile',
+                                'china' => 'China',
+                                'colombia' => 'Colômbia',
+                                'espanha' => 'Espanha',
+                                'estados_unidos' => 'Estados Unidos',
+                                'franca' => 'França',
+                                'alemanha' => 'Alemanha',
+                                'italia' => 'Itália',
+                                'japao' => 'Japão',
+                                'mexico' => 'México',
+                                'moçambique' => 'Moçambique',
+                                'portugal' => 'Portugal',
+                                'reino_unido' => 'Reino Unido',
+                                'russia' => 'Rússia',
+                                'africa_do_sul' => 'África do Sul',
+                                'australia' => 'Austrália',
+                                'coreia_do_sul' => 'Coreia do Sul',
+                                'india' => 'Índia',
+                                'indonesia' => 'Indonésia',
+                                'nigeria' => 'Nigéria',
+                                'venezuela' => 'Venezuela'
+                            ];
+                            foreach ($paises as $codigo => $nome) {
+                                $selected = (isset($_SESSION['form_data']['pais']) && $_SESSION['form_data']['pais'] === $codigo) ? 'selected' : '';
+                                echo "<option value='$codigo' $selected>$nome</option>";
+                            }
+                            ?>
                         </select>
                     </div>
                     
                     <div class="form-group">
                         <label>Morada</label>
-                        <input type="text" id="morada" name="morada" placeholder="Digite aqui" required>
+                        <input type="text" id="morada" name="morada" placeholder="Digite aqui" value="<?php echo isset($_SESSION['form_data']['morada']) ? htmlspecialchars($_SESSION['form_data']['morada']) : ''; ?>" required>
                     </div>
                     <div class="form-group">
                         <label>Gênero</label>
                         <select name="genero" id="genero" class="date" required>
-                            <option value="masculino">Masculino</option>
-                            <option value="femininoo">Feminino</option>
+                            <option value="masculino" <?php echo (isset($_SESSION['form_data']['genero']) && $_SESSION['form_data']['genero'] === 'masculino') ? 'selected' : ''; ?>>Masculino</option>
+                            <option value="feminino" <?php echo (isset($_SESSION['form_data']['genero']) && $_SESSION['form_data']['genero'] === 'feminino') ? 'selected' : ''; ?>>Feminino</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Nº de agregados</label>
-                        <input type="number" name="num_agregados" id="num_agregados" placeholder="Digite aqui" required>
+                        <input type="number" name="num_agregados" id="num_agregados" placeholder="Digite aqui" value="<?php echo isset($_SESSION['form_data']['num_agregados']) ? htmlspecialchars($_SESSION['form_data']['num_agregados']) : ''; ?>" required>
                     </div>
                     <div class="form-group">
                         <label>Contato de emergência</label>
-                        <input type="tel" id="contato_emergencia" name="contato_emergencia" placeholder="Digite o número de telefone" required>
+                        <input type="tel" id="contato_emergencia" name="contato_emergencia" placeholder="Digite o número de telefone" value="<?php echo isset($_SESSION['form_data']['contato_emergencia']) ? htmlspecialchars($_SESSION['form_data']['contato_emergencia']) : ''; ?>" required>
                     </div>
                     <div class="form-group">
                         <label>Nome do contato emergência</label>
-                        <input type="text" name="nome_contato_emergencia" id="nome_contato_emergencia" placeholder="Digite aqui" required>
+                        <input type="text" name="nome_contato_emergencia" id="nome_contato_emergencia" placeholder="Digite aqui" value="<?php echo isset($_SESSION['form_data']['nome_contato_emergencia']) ? htmlspecialchars($_SESSION['form_data']['nome_contato_emergencia']) : ''; ?>" required>
                     </div>
 
                 </div>
@@ -807,17 +961,6 @@ body.dark {
             <!-- Input escondido para upload da foto -->
             <input type="file" name="foto" id="foto" accept="image/*" style="display: none;" onchange="previewImage(event)">
 
-
-            <script>
-            function previewImage(event) {
-                var reader = new FileReader();
-                reader.onload = function() {
-                    document.getElementById('preview').src = reader.result;
-                };
-                reader.readAsDataURL(event.target.files[0]);
-            }
-            </script>
-
             <div class="form-section professional-info">
                 <h2 class="section-title">
                     Dados Profissionais e Financeiros
@@ -826,37 +969,75 @@ body.dark {
 
                 <div class="form-group">
                     <label>Telemóvel</label>
-                    <input type="tel" id="telemovel" name="telemovel" placeholder="Digite o número de telefone" required>
+                    <input type="tel" id="telemovel" name="telemovel" placeholder="Digite o número de telefone" value="<?php echo isset($_SESSION['form_data']['telemovel']) ? htmlspecialchars($_SESSION['form_data']['telemovel']) : ''; ?>" required>
                 </div>
                     <div class="form-group">
                         <label>Email</label>
-                        <input type="text" name="email" id="email" placeholder="Digite aqui"required>
+                        <input type="text" name="email" id="email" placeholder="Digite aqui" value="<?php echo isset($_SESSION['form_data']['email']) ? htmlspecialchars($_SESSION['form_data']['email']) : ''; ?>" required>
                     </div>
                     <div class="form-group">
                         <label>Estado</label>
-                        <input type="text" name="estado" id="estado" placeholder="Ativo*" readonly>
+                        <input type="text" name="estado" id="estado" placeholder="Ativo*" readonly value="<?php echo isset($_SESSION['form_data']['estado']) ? htmlspecialchars($_SESSION['form_data']['estado']) : 'Ativo'; ?>">
                     </div>
                     <div class="form-group">
                         <label for="departamento">Departamento</label>
                         <select id="departamento" name="departamento" required>
                             <option value="">Selecione o Departamento</option>
+                            <?php
+                            // Buscar departamentos
+                            $sql_departamentos = "SELECT id, nome FROM departamentos WHERE empresa_id = ? ORDER BY nome";
+                            $stmt_departamentos = $conn->prepare($sql_departamentos);
+                            
+                            if ($stmt_departamentos) {
+                                $stmt_departamentos->bind_param("i", $empresa_id);
+                                $stmt_departamentos->execute();
+                                $result_departamentos = $stmt_departamentos->get_result();
+                                
+                                while($depto = $result_departamentos->fetch_assoc()) {
+                                    $selected = (isset($_SESSION['form_data']['departamento']) && $_SESSION['form_data']['departamento'] == $depto['id']) ? 'selected' : '';
+                                    echo "<option value='".$depto['id']."' $selected>".$depto['nome']."</option>";
+                                }
+                                
+                                $stmt_departamentos->close();
+                            }
+                            ?>
                         </select>
                     </div>
                     
                     <div class="form-group">
                         <label for="cargo">Cargo</label>
                         <div class="readonly-container" title="Selecione o Departamento primeiro para prosseguir">
-                            <select id="cargo" name="cargo" required disabled>
+                            <select id="cargo" name="cargo" required <?php echo (!isset($_SESSION['form_data']['departamento']) || empty($_SESSION['form_data']['departamento'])) ? 'disabled' : ''; ?>>
                                 <option value="">Selecione o Cargo</option>
+                                <?php
+                                if (isset($_SESSION['form_data']['departamento']) && !empty($_SESSION['form_data']['departamento'])) {
+                                    // Buscar cargos do departamento selecionado
+                                    $sql_cargos = "SELECT id, nome, salario_base FROM cargos WHERE departamento_id = ? ORDER BY nome";
+                                    $stmt_cargos = $conn->prepare($sql_cargos);
+                                    
+                                    if ($stmt_cargos) {
+                                        $stmt_cargos->bind_param("i", $_SESSION['form_data']['departamento']);
+                                        $stmt_cargos->execute();
+                                        $result_cargos = $stmt_cargos->get_result();
+                                        
+                                        while($cargo = $result_cargos->fetch_assoc()) {
+                                            $selected = (isset($_SESSION['form_data']['cargo']) && $_SESSION['form_data']['cargo'] == $cargo['id']) ? 'selected' : '';
+                                            echo "<option value='".$cargo['id']."' data-salario='".$cargo['salario_base']."' $selected>".$cargo['nome']."</option>";
+                                        }
+                                        
+                                        $stmt_cargos->close();
+                                    }
+                                }
+                                ?>
                             </select>
-                            <i class="fas fa-lock lock-icon"></i>
+                            <i class="fas fa-lock lock-icon" style="display: <?php echo (!isset($_SESSION['form_data']['departamento']) || empty($_SESSION['form_data']['departamento'])) ? 'block' : 'none'; ?>"></i>
                         </div>
                     </div>
                     
                     <div class="form-group">
                         <label for="salario_base">Salário Base</label>
                         <div class="readonly-container" title="Salário Calculado automaticamente">
-                            <input type="number" id="salario_base" name="salario_base" step="0.01" readonly>
+                            <input type="number" id="salario_base" name="salario_base" step="0.01" readonly value="<?php echo isset($_SESSION['form_data']['salario_base']) ? htmlspecialchars($_SESSION['form_data']['salario_base']) : ''; ?>">
                             <i class="fas fa-lock lock-icon"></i>
                         </div>
                     </div>
@@ -865,20 +1046,28 @@ body.dark {
                         <label>Tipo</label>
                         <select size="1" name="tipo_trabalhador" id="tipo_trabalhador" required>
                             <option value="">Selecione um tipo de trabalhador</option>
-                            <option value="efetivo">Trabalhador Efetivo</option>
-                            <option value="temporario">Trabalhador Temporário</option>
-                            <option value="estagiario">Trabalhador Estagiário</option>
-                            <option value="autonomo">Trabalhador Autônomo</option>
-                            <option value="freelancer">Trabalhador Freelancer</option>
-                            <option value="terceirizado">Trabalhador Terceirizado</option>
-                            <option value="intermitente">Trabalhador Intermitente</option>
-                            <option value="voluntario">Trabalhador Voluntário</option>
+                            <?php
+                            $tipos = [
+                                'efetivo' => 'Trabalhador Efetivo',
+                                'temporario' => 'Trabalhador Temporário',
+                                'estagiario' => 'Trabalhador Estagiário',
+                                'autonomo' => 'Trabalhador Autônomo',
+                                'freelancer' => 'Trabalhador Freelancer',
+                                'terceirizado' => 'Trabalhador Terceirizado',
+                                'intermitente' => 'Trabalhador Intermitente',
+                                'voluntario' => 'Trabalhador Voluntário'
+                            ];
+                            foreach ($tipos as $codigo => $nome) {
+                                $selected = (isset($_SESSION['form_data']['tipo_trabalhador']) && $_SESSION['form_data']['tipo_trabalhador'] === $codigo) ? 'selected' : '';
+                                echo "<option value='$codigo' $selected>$nome</option>";
+                            }
+                            ?>
                         </select>
                     </div>
                     
                     <div class="form-group">
                         <label>Nº conta banco</label>
-                        <input type="number" name="num_conta_bancaria" id="num_conta_bancaria" title="Número da conta bancária" placeholder="Digite aqui" required>
+                        <input type="number" name="num_conta_bancaria" id="num_conta_bancaria" title="Número da conta bancária" placeholder="Digite aqui" value="<?php echo isset($_SESSION['form_data']['num_conta_bancaria']) ? htmlspecialchars($_SESSION['form_data']['num_conta_bancaria']) : ''; ?>" required>
                     </div>
                     <div class="form-group">
                         <label>Banco</label>
@@ -903,10 +1092,9 @@ body.dark {
                             
                             if ($result_bancos->num_rows > 0) {
                                 while($banco = $result_bancos->fetch_assoc()) {
-                                    echo "<option value='".$banco['banco_codigo']."'>".$banco['banco_nome']."</option>";
+                                    $selected = (isset($_SESSION['form_data']['banco']) && $_SESSION['form_data']['banco'] === $banco['banco_codigo']) ? 'selected' : '';
+                                    echo "<option value='".$banco['banco_codigo']."' $selected>".$banco['banco_nome']."</option>";
                                 }
-                            } else {
-                                echo "<!-- Nenhum banco ativo encontrado para a empresa ID: " . $empresa_id . " -->";
                             }
                             
                             $stmt_bancos->close();
@@ -915,11 +1103,11 @@ body.dark {
                     </div>
                     <div class="form-group">
                         <label for="IBAN">IBAN</label>
-                        <input type="text" id="iban" name="iban" placeholder="Digite aqui" required>
+                        <input type="text" id="iban" name="iban" placeholder="Digite aqui" value="<?php echo isset($_SESSION['form_data']['iban']) ? htmlspecialchars($_SESSION['form_data']['iban']) : ''; ?>" required>
                     </div>
                     <div class="form-group">
                         <label>Nº SS</label>
-                        <input type="text" name="num_ss" id="num_ss" placeholder="Digite aqui" required>
+                        <input type="text" name="num_ss" id="num_ss" placeholder="Digite aqui" value="<?php echo isset($_SESSION['form_data']['num_ss']) ? htmlspecialchars($_SESSION['form_data']['num_ss']) : ''; ?>" required>
                     </div>
 
                 </div>
@@ -1168,33 +1356,64 @@ document.addEventListener('DOMContentLoaded', function() {
     const departamentoSelect = document.getElementById('departamento');
     const cargoSelect = document.getElementById('cargo');
     const salarioBaseInput = document.getElementById('salario_base');
+    const lockIcon = document.querySelector('.lock-icon');
 
+    // Função para atualizar o estado do select e ícones
+    function atualizarEstadoSelect() {
+        const temDepartamento = departamentoSelect.value !== '';
+        
+        // Atualizar estado do select
+        cargoSelect.disabled = !temDepartamento;
+        
+        // Forçar atualização do estilo
+        cargoSelect.style.display = 'none';
+        cargoSelect.offsetHeight; // Força reflow
+        cargoSelect.style.display = '';
+        
+        // Atualizar ícone do cadeado
+        lockIcon.style.opacity = temDepartamento ? '0' : '1';
+    }
+
+    // Função para carregar cargos
+    function carregarCargos(departamentoId) {
+        if (!departamentoId) return;
+        
+        fetch(`get_cargos.php?departamento_id=${departamentoId}`)
+            .then(response => response.json())
+            .then(cargos => {
+                cargoSelect.innerHTML = '<option value="">Selecione o Cargo</option>';
+                cargos.forEach(cargo => {
+                    const option = document.createElement('option');
+                    option.value = cargo.id;
+                    option.textContent = cargo.nome;
+                    option.dataset.salario = cargo.salario_base;
+                    if (cargo.id == '<?php echo isset($_SESSION['form_data']['cargo']) ? $_SESSION['form_data']['cargo'] : ''; ?>') {
+                        option.selected = true;
+                        salarioBaseInput.value = cargo.salario_base;
+                    }
+                    cargoSelect.appendChild(option);
+                });
+                atualizarEstadoSelect();
+            })
+            .catch(error => {
+                console.error('Erro ao carregar cargos:', error);
+            });
+    }
+
+    // Evento de mudança do departamento
     departamentoSelect.addEventListener('change', function() {
         const departamentoId = this.value;
         
-        // Limpar o select de cargos
-        cargoSelect.innerHTML = '<option value="">Selecione o Cargo</option>';
-        salarioBaseInput.value = '';
-        
         if (departamentoId) {
-            // Fazer a requisição AJAX para buscar os cargos
-            fetch(`get_cargos.php?departamento_id=${departamentoId}`)
-                .then(response => response.json())
-                .then(cargos => {
-                    cargos.forEach(cargo => {
-                        const option = document.createElement('option');
-                        option.value = cargo.id;
-                        option.textContent = cargo.nome;
-                        option.dataset.salario = cargo.salario_base;
-                        cargoSelect.appendChild(option);
-                    });
-                })
-                .catch(error => {
-                    console.error('Erro ao carregar cargos:', error);
-                });
+            carregarCargos(departamentoId);
+        } else {
+            cargoSelect.innerHTML = '<option value="">Selecione o Cargo</option>';
+            salarioBaseInput.value = '';
+            atualizarEstadoSelect();
         }
     });
 
+    // Evento de mudança do cargo
     cargoSelect.addEventListener('change', function() {
         const selectedOption = this.options[this.selectedIndex];
         if (selectedOption && selectedOption.dataset.salario) {
@@ -1203,56 +1422,12 @@ document.addEventListener('DOMContentLoaded', function() {
             salarioBaseInput.value = '';
         }
     });
-});
-</script>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Carregar departamentos e cargos ao iniciar a página
-    carregarDepartamentosECargos();
-
-    // Função para carregar departamentos e cargos
-    function carregarDepartamentosECargos() {
-        fetch('configuracoes_sam/get_cargos.php')
-            .then(response => response.json())
-            .then(data => {
-                // Preencher o select de departamentos
-                const selectDepartamento = document.getElementById('departamento');
-                selectDepartamento.innerHTML = '<option value="">Selecione o Departamento</option>';
-                data.departamentos.forEach(depto => {
-                    selectDepartamento.innerHTML += `<option value="${depto.id}">${depto.nome}</option>`;
-                });
-
-                // Preencher o select de cargos
-                const selectCargo = document.getElementById('cargo');
-                selectCargo.innerHTML = '<option value="">Selecione o Cargo</option>';
-                data.cargos.forEach(cargo => {
-                    selectCargo.innerHTML += `<option value="${cargo.id}" data-salario="${cargo.salario_base}">${cargo.nome} (${cargo.departamento_nome})</option>`;
-                });
-
-                // Adicionar evento para atualizar salário base quando selecionar cargo
-                selectCargo.addEventListener('change', function() {
-                    const selectedOption = this.options[this.selectedIndex];
-                    const salarioBase = selectedOption.getAttribute('data-salario');
-                    document.getElementById('salario_base').value = salarioBase || '';
-                });
-
-                // Adicionar evento para habilitar/desabilitar o select de cargo
-                selectDepartamento.addEventListener('change', function() {
-                    const selectCargo = document.getElementById('cargo');
-                    const lockIcon = selectCargo.parentElement.querySelector('.lock-icon');
-                    if (this.value) {
-                        selectCargo.disabled = false;
-                        lockIcon.style.display = 'none';
-                    } else {
-                        selectCargo.disabled = true;
-                        selectCargo.value = '';
-                        document.getElementById('salario_base').value = '';
-                        lockIcon.style.display = 'block';
-                    }
-                });
-            })
-            .catch(error => console.error('Erro ao carregar dados:', error));
+    // Estado inicial
+    if (departamentoSelect.value) {
+        carregarCargos(departamentoSelect.value);
+    } else {
+        atualizarEstadoSelect();
     }
 });
 </script>
